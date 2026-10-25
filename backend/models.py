@@ -2,7 +2,7 @@ from datetime import datetime, time
 import enum
 from sqlalchemy import (
     String, Integer, Text, ForeignKey, 
-    DateTime, Time, Enum, Boolean
+    DateTime, Time, Enum, Boolean, Float
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -36,9 +36,15 @@ class Room(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=True, default="Фотостудия")
     description: Mapped[str] = mapped_column(Text, nullable=True)
     price_per_hour: Mapped[int] = mapped_column(Integer, nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    area: Mapped[int] = mapped_column(Integer, nullable=True, default=80)
+    metro: Mapped[str] = mapped_column(String(100), nullable=True, default="м. Белорусская")
+    address: Mapped[str] = mapped_column(String(200), nullable=True)
+    rating: Mapped[float] = mapped_column(Float, nullable=True, default=4.9)
+    reviews_count: Mapped[int] = mapped_column(Integer, nullable=True, default=128)
     image_url: Mapped[str] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -74,7 +80,7 @@ class Booking(Base):
     room_id: Mapped[int] = mapped_column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.PENDING, nullable=False)
+    status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.CONFIRMED, nullable=False)
     total_price: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
