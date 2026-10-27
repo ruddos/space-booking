@@ -388,3 +388,55 @@ async def create_booking(
     )
     res = await db.execute(query)
     return res.scalar_one()
+
+@app.get("/api/bookings/my", response_model=List[BookingResponse], tags=["Bookings"])
+async def get_my_bookings(
+    tab: Optional[str] = Query(None, description="Фильтр для личного кабинета: upcoming, past, cancelled"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .where(Booking.user_id == current_user.id)
+    )
+
+    now = datetime.now()
+    if tab == "upcoming":
+        query = query.where(Booking.status != BookingStatus.CANCELLED, Booking.start_time >= now)
+    elif tab == "past":
+        query = query.where(Booking.status != BookingStatus.CANCELLED, Booking.end_time < now)
+    elif tab == "cancelled":
+        query = query.where(Booking.status == BookingStatus.CANCELLED)
+
+    query = query.order_by(Booking.start_time.desc())
+    res = await db.execute(query)
+    return res.scalars().all()
+
+@app.patch("/api/bookings/{booking_id}/cancel", response_model=BookingResponse, tags=["Bookings"])
+async def cancel_booking(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .where(Booking.id == booking_id)
+    )
+    res = await db.execute(query)
+    booking = res.scalar_one_or_none()
+
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Бронирование не найдено")
+
+    if booking.user_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на отмену этой брони")
+
+    if booking.status == BookingStatus.CANCELLED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Бронирование уже отменено")
+
+    booking.status = BookingStatus.CANCELLED
+    await db.commit()
+    await db.refresh(booking)
+    return booking
