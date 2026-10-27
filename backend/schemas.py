@@ -23,6 +23,17 @@ class ScheduleResponse(ScheduleBase):
     room_id: int
     model_config = ConfigDict(from_attributes=True)
 
+class SlotResponse(BaseModel):
+    time: str
+    is_available: bool
+
+class AvailableSlotsResponse(BaseModel):
+    room_id: int
+    date: str
+    open_time: str
+    close_time: str
+    slots: List[SlotResponse]
+
 class RoomBase(BaseModel):
     name: str
     category: Optional[str] = "Фотостудия"
@@ -43,6 +54,7 @@ class RoomResponse(RoomBase):
     id: int
     is_active: bool
     amenities: List[AmenityResponse] = []
+    today_available_slots: List[str] = []
     model_config = ConfigDict(from_attributes=True)
 
 class RoomDetailResponse(RoomResponse):
