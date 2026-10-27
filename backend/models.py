@@ -76,12 +76,17 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    booking_number: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     room_id: Mapped[int] = mapped_column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.CONFIRMED, nullable=False)
     total_price: Mapped[int] = mapped_column(Integer, nullable=False)
+    additional_services: Mapped[str] = mapped_column(Text, nullable=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    contact_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    contact_phone: Mapped[str] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="bookings")

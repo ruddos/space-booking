@@ -60,6 +60,35 @@ class RoomResponse(RoomBase):
 class RoomDetailResponse(RoomResponse):
     schedules: List[ScheduleResponse] = []
 
+class BookingCreate(BaseModel):
+    room_id: int
+    start_time: datetime
+    end_time: datetime
+    additional_services: List[str] = []
+    comment: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+class BookingResponse(BaseModel):
+    id: int
+    booking_number: Optional[str] = None
+    user_id: int
+    room_id: int
+    start_time: datetime
+    end_time: datetime
+    status: BookingStatus
+    total_price: int
+    additional_services: Optional[str] = None
+    comment: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+    created_at: datetime
+    room: Optional[RoomResponse] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class BookingStatusUpdate(BaseModel):
+    status: BookingStatus
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str

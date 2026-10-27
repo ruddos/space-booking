@@ -16,7 +16,12 @@ async def init_db():
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS address VARCHAR(200) DEFAULT 'Москва, ул. Лесная, 7';",
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS area INTEGER DEFAULT 80;",
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rating FLOAT DEFAULT 4.9;",
-            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS reviews_count INTEGER DEFAULT 128;"
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS reviews_count INTEGER DEFAULT 128;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_number VARCHAR(20);",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS additional_services TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS comment TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_name VARCHAR(100);",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);"
         ]
         for mig in migrations:
             await conn.execute(text(mig))

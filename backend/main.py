@@ -288,3 +288,103 @@ async def get_available_slots(
         close_time=sched.close_time.strftime("%H:%M"),
         slots=slots
     )
+
+import random
+
+ADDITIONAL_SERVICES_PRICING = {
+    "Доп. комплект света": 800,
+    "Цветной бумажный фон": 500,
+    "Визажист": 3500,
+    "Ассистент на площадке": 1500
+}
+
+@app.post("/api/bookings", response_model=BookingResponse, status_code=status.HTTP_201_CREATED, tags=["Bookings"])
+async def create_booking(
+    booking_data: BookingCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    start_time = booking_data.start_time.replace(tzinfo=None) if booking_data.start_time.tzinfo else booking_data.start_time
+    end_time = booking_data.end_time.replace(tzinfo=None) if booking_data.end_time.tzinfo else booking_data.end_time
+
+    if start_time >= end_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Время окончания брони должно быть позже времени начала"
+        )
+
+    if (end_time - start_time).total_seconds() < 3600:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Минимальная продолжительность бронирования — 1 час"
+        )
+
+    if start_time < datetime.now() - timedelta(minutes=5):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Нельзя забронировать зал на прошедшее время"
+        )
+
+    room_res = await db.execute(select(Room).where(Room.id == booking_data.room_id, Room.is_active == True))
+    room = room_res.scalar_one_or_none()
+    if not room:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Зал не найден")
+
+    day_of_week = start_time.weekday()
+    sched_res = await db.execute(
+        select(Schedule).where(Schedule.room_id == room.id, Schedule.day_of_week == day_of_week)
+    )
+    sched = sched_res.scalar_one_or_none()
+    if not sched:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="В выбранный день зал не работает")
+
+    if start_time.time() < sched.open_time or end_time.time() > sched.close_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Зал работает с {sched.open_time.strftime('%H:%M')} до {sched.close_time.strftime('%H:%M')}"
+        )
+
+    overlap_res = await db.execute(
+        select(Booking).where(
+            Booking.room_id == room.id,
+            Booking.status != BookingStatus.CANCELLED,
+            Booking.start_time < end_time,
+            Booking.end_time > start_time
+        )
+    )
+    if overlap_res.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Выбранное время уже занято другой бронью"
+        )
+
+    duration_hours = (end_time - start_time).total_seconds() / 3600.0
+    hours_price = int(round(duration_hours * room.price_per_hour))
+    services_price = sum(ADDITIONAL_SERVICES_PRICING.get(s, 0) for s in booking_data.additional_services)
+    total_price = hours_price + services_price
+
+    booking_code = f"SP-{random.randint(100000, 999999)}"
+
+    new_booking = Booking(
+        booking_number=booking_code,
+        user_id=current_user.id,
+        room_id=room.id,
+        start_time=start_time,
+        end_time=end_time,
+        status=BookingStatus.CONFIRMED,
+        total_price=total_price,
+        additional_services=", ".join(booking_data.additional_services) if booking_data.additional_services else None,
+        comment=booking_data.comment,
+        contact_name=booking_data.contact_name or current_user.full_name,
+        contact_phone=booking_data.contact_phone or current_user.phone
+    )
+    db.add(new_booking)
+    await db.commit()
+
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .where(Booking.id == new_booking.id)
+    )
+    res = await db.execute(query)
+    return res.scalar_one()
