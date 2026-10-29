@@ -1,3 +1,4 @@
+import random
 from contextlib import asynccontextmanager
 from datetime import datetime, date, time, timedelta
 from typing import Optional, List
@@ -9,16 +10,29 @@ from sqlalchemy import select, text, and_, or_
 from sqlalchemy.orm import selectinload
 
 from database import init_db, get_db, engine
-from models import Room, RoomAmenity, Schedule, Booking, BookingStatus, User, UserRole
+from models import (
+    Room, RoomAmenity, Schedule, Booking, BookingStatus,
+    User, UserRole, Review, Favorite, BlogPost, ContactMessage
+)
 from schemas import (
     RoomCreate, RoomResponse, RoomDetailResponse,
     SlotResponse, AvailableSlotsResponse,
-    UserCreate, UserLogin, UserResponse, TokenResponse
+    BookingCreate, BookingResponse, BookingStatusUpdate,
+    UserCreate, UserLogin, UserResponse, TokenResponse,
+    BlogPostResponse, ContactMessageCreate, NewsletterSubscribe
 )
 from auth import (
     hash_password, verify_password,
-    create_access_token, get_current_user
+    create_access_token, get_current_user, get_current_admin
 )
+
+# Стоимость дополнительных услуг из макета Figma (Экран 04 Бронирование)
+ADDITIONAL_SERVICES_PRICING = {
+    "Доп. комплект света": 800,
+    "Цветной бумажный фон": 500,
+    "Визажист": 3500,
+    "Ассистент на площадке": 1500
+}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,6 +41,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SPACE Booking API", lifespan=lifespan)
 
+# 1. CORS Middleware для React-фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -43,6 +58,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Проверка соединения с базой данных
 @app.get("/api/check-db", tags=["System"])
 async def check_db():
     async with engine.connect() as conn:
@@ -51,6 +67,8 @@ async def check_db():
         )
         tables = [row[0] for row in result.fetchall()]
         return {"status": "connected", "tables": tables}
+
+# --- Вспомогательная функция расчета слотов ---
 
 def calculate_slots(
     schedule: Schedule,
@@ -86,7 +104,14 @@ def calculate_slots(
 
     return slots
 
-@app.post("/api/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED, tags=["Auth"])
+# --- 2. Аутентификация и пользователи (Auth) ---
+
+@app.post(
+    "/api/auth/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Auth"]
+)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     query = select(User).where(User.email == user_data.email)
     result = await db.execute(query)
@@ -114,7 +139,11 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     )
     return TokenResponse(access_token=token, token_type="bearer", user=new_user)
 
-@app.post("/api/auth/login", response_model=TokenResponse, tags=["Auth"])
+@app.post(
+    "/api/auth/login",
+    response_model=TokenResponse,
+    tags=["Auth"]
+)
 async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     query = select(User).where(User.email == login_data.email)
     result = await db.execute(query)
@@ -132,9 +161,15 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     )
     return TokenResponse(access_token=token, token_type="bearer", user=user)
 
-@app.get("/api/auth/me", response_model=UserResponse, tags=["Auth"])
+@app.get(
+    "/api/auth/me",
+    response_model=UserResponse,
+    tags=["Auth"]
+)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+# --- 3. Каталог залов и расписание (Rooms & Slots) ---
 
 @app.get("/api/rooms", response_model=List[RoomResponse], tags=["Rooms"])
 async def get_rooms(
@@ -213,7 +248,11 @@ async def get_rooms(
 async def get_room_detail(room_id: int, db: AsyncSession = Depends(get_db)):
     query = (
         select(Room)
-        .options(selectinload(Room.amenities), selectinload(Room.schedules))
+        .options(
+            selectinload(Room.amenities),
+            selectinload(Room.schedules),
+            selectinload(Room.reviews)
+        )
         .where(Room.id == room_id, Room.is_active == True)
     )
     result = await db.execute(query)
@@ -289,16 +328,14 @@ async def get_available_slots(
         slots=slots
     )
 
-import random
+# --- 4. Бронирования (Bookings) ---
 
-ADDITIONAL_SERVICES_PRICING = {
-    "Доп. комплект света": 800,
-    "Цветной бумажный фон": 500,
-    "Визажист": 3500,
-    "Ассистент на площадке": 1500
-}
-
-@app.post("/api/bookings", response_model=BookingResponse, status_code=status.HTTP_201_CREATED, tags=["Bookings"])
+@app.post(
+    "/api/bookings",
+    response_model=BookingResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Bookings"]
+)
 async def create_booking(
     booking_data: BookingCreate,
     current_user: User = Depends(get_current_user),
@@ -344,6 +381,7 @@ async def create_booking(
             detail=f"Зал работает с {sched.open_time.strftime('%H:%M')} до {sched.close_time.strftime('%H:%M')}"
         )
 
+    # Защита от овербукинга
     overlap_res = await db.execute(
         select(Booking).where(
             Booking.room_id == room.id,
@@ -441,7 +479,7 @@ async def cancel_booking(
     await db.refresh(booking)
     return booking
 
-from models import Review, Favorite
+# --- 5. Избранное (Favorites, Экран 07) ---
 
 @app.get("/api/favorites", response_model=List[RoomResponse], tags=["Favorites"])
 async def get_favorites(
@@ -488,3 +526,77 @@ async def remove_from_favorites(
         await db.delete(fav)
         await db.commit()
     return {"status": "removed"}
+
+# --- 6. Блог SPACE (Экран 08) ---
+
+@app.get("/api/blog/posts", response_model=List[BlogPostResponse], tags=["Blog"])
+async def get_blog_posts(
+    category: Optional[str] = Query(None, description="Категория: Гайды, Свет, Мероприятия, Владельцам"),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(BlogPost).order_by(BlogPost.is_featured.desc(), BlogPost.created_at.desc())
+    if category and category != "Все":
+        query = query.where(BlogPost.category.ilike(f"%{category}%"))
+    res = await db.execute(query)
+    return res.scalars().all()
+
+# --- 7. Контакты и подписка (Экран 08 & 09) ---
+
+@app.post("/api/contact", status_code=status.HTTP_201_CREATED, tags=["Feedback"])
+async def submit_contact_form(
+    contact_data: ContactMessageCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    new_msg = ContactMessage(
+        name=contact_data.name,
+        email=contact_data.email,
+        topic=contact_data.topic,
+        message=contact_data.message
+    )
+    db.add(new_msg)
+    await db.commit()
+    return {"status": "sent", "message": "Спасибо за ваше сообщение! Мы ответим в ближайшее время."}
+
+@app.post("/api/newsletter/subscribe", status_code=status.HTTP_200_OK, tags=["Feedback"])
+async def subscribe_newsletter(
+    data: NewsletterSubscribe
+):
+    return {"status": "subscribed", "message": f"Email {data.email} успешно подписан на рассылку новых площадок!"}
+
+# --- 8. Административная панель (Admin) ---
+
+@app.get("/api/admin/bookings", response_model=List[BookingResponse], tags=["Admin"])
+async def get_all_bookings(
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .order_by(Booking.created_at.desc())
+    )
+    res = await db.execute(query)
+    return res.scalars().all()
+
+@app.patch("/api/admin/bookings/{booking_id}/status", response_model=BookingResponse, tags=["Admin"])
+async def update_booking_status(
+    booking_id: int,
+    status_update: BookingStatusUpdate,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .where(Booking.id == booking_id)
+    )
+    res = await db.execute(query)
+    booking = res.scalar_one_or_none()
+
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Бронирование не найдено")
+
+    booking.status = status_update.status
+    await db.commit()
+    await db.refresh(booking)
+    return booking

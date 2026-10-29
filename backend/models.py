@@ -117,3 +117,27 @@ class Favorite(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="favorites")
     room: Mapped["Room"] = relationship("Room", back_populates="favorites")
+
+# Экран 08: Блог SPACE
+class BlogPost(Base):
+    __tablename__ = "blog_posts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    read_time: Mapped[str] = mapped_column(String(30), default="5 мин")
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+# Экран 09: Обратная связь (Контакты)
+class ContactMessage(Base):
+    __tablename__ = "contact_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    topic: Mapped[str] = mapped_column(String(100), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

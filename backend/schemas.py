@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, EmailStr
 from models import UserRole, BookingStatus
 
+# --- Amenity Schemas ---
 class AmenityBase(BaseModel):
     name: str
 
@@ -13,6 +14,7 @@ class AmenityResponse(AmenityBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+# --- Schedule Schemas ---
 class ScheduleBase(BaseModel):
     day_of_week: int
     open_time: time
@@ -23,6 +25,17 @@ class ScheduleResponse(ScheduleBase):
     room_id: int
     model_config = ConfigDict(from_attributes=True)
 
+# --- Review Schemas ---
+class ReviewResponse(BaseModel):
+    id: int
+    room_id: int
+    author_name: str
+    rating: int
+    text: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Slot Schemas ---
 class SlotResponse(BaseModel):
     time: str
     is_available: bool
@@ -34,6 +47,7 @@ class AvailableSlotsResponse(BaseModel):
     close_time: str
     slots: List[SlotResponse]
 
+# --- Room Schemas ---
 class RoomBase(BaseModel):
     name: str
     category: Optional[str] = "Фотостудия"
@@ -55,11 +69,14 @@ class RoomResponse(RoomBase):
     is_active: bool
     amenities: List[AmenityResponse] = []
     today_available_slots: List[str] = []
+    
     model_config = ConfigDict(from_attributes=True)
 
 class RoomDetailResponse(RoomResponse):
     schedules: List[ScheduleResponse] = []
+    reviews: List[ReviewResponse] = []
 
+# --- Booking Schemas ---
 class BookingCreate(BaseModel):
     room_id: int
     start_time: datetime
@@ -84,11 +101,42 @@ class BookingResponse(BaseModel):
     contact_phone: Optional[str] = None
     created_at: datetime
     room: Optional[RoomResponse] = None
+    
     model_config = ConfigDict(from_attributes=True)
 
 class BookingStatusUpdate(BaseModel):
     status: BookingStatus
 
+# --- Favorite Schemas ---
+class FavoriteResponse(BaseModel):
+    id: int
+    room_id: int
+    room: Optional[RoomResponse] = None
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Blog Schemas (Экран 08) ---
+class BlogPostResponse(BaseModel):
+    id: int
+    title: str
+    category: str
+    read_time: str
+    description: str
+    image_url: Optional[str] = None
+    is_featured: bool
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Contact & Newsletter Schemas (Экран 08 & 09) ---
+class ContactMessageCreate(BaseModel):
+    name: str
+    email: EmailStr
+    topic: str = "Вопрос по бронированию"
+    message: str
+
+class NewsletterSubscribe(BaseModel):
+    email: EmailStr
+
+# --- User & Auth Schemas ---
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
@@ -108,24 +156,10 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     role: UserRole
     created_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
-
-class ReviewResponse(BaseModel):
-    id: int
-    room_id: int
-    author_name: str
-    rating: int
-    text: str
-    created_at: datetime
-    model_config = ConfigDict(from_attributes=True)
-
-class FavoriteResponse(BaseModel):
-    id: int
-    room_id: int
-    room: Optional[RoomResponse] = None
-    model_config = ConfigDict(from_attributes=True)
