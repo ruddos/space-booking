@@ -440,3 +440,51 @@ async def cancel_booking(
     await db.commit()
     await db.refresh(booking)
     return booking
+
+from models import Review, Favorite
+
+@app.get("/api/favorites", response_model=List[RoomResponse], tags=["Favorites"])
+async def get_favorites(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Room)
+        .join(Favorite, Favorite.room_id == Room.id)
+        .options(selectinload(Room.amenities))
+        .where(Favorite.user_id == current_user.id, Room.is_active == True)
+    )
+    res = await db.execute(query)
+    return res.scalars().all()
+
+@app.post("/api/favorites/{room_id}", status_code=status.HTTP_201_CREATED, tags=["Favorites"])
+async def add_to_favorites(
+    room_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    fav_check = await db.execute(
+        select(Favorite).where(Favorite.user_id == current_user.id, Favorite.room_id == room_id)
+    )
+    if fav_check.scalar_one_or_none():
+        return {"status": "already_in_favorites"}
+
+    new_fav = Favorite(user_id=current_user.id, room_id=room_id)
+    db.add(new_fav)
+    await db.commit()
+    return {"status": "added"}
+
+@app.delete("/api/favorites/{room_id}", tags=["Favorites"])
+async def remove_from_favorites(
+    room_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    fav_res = await db.execute(
+        select(Favorite).where(Favorite.user_id == current_user.id, Favorite.room_id == room_id)
+    )
+    fav = fav_res.scalar_one_or_none()
+    if fav:
+        await db.delete(fav)
+        await db.commit()
+    return {"status": "removed"}

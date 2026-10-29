@@ -2,7 +2,7 @@ from datetime import datetime, time
 import enum
 from sqlalchemy import (
     String, Integer, Text, ForeignKey, 
-    DateTime, Time, Enum, Boolean, Float
+    DateTime, Time, Enum, Boolean, Float, UniqueConstraint
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -30,6 +30,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
 
 class Room(Base):
     __tablename__ = "rooms"
@@ -51,6 +52,8 @@ class Room(Base):
     amenities: Mapped[list["RoomAmenity"]] = relationship("RoomAmenity", back_populates="room", cascade="all, delete-orphan")
     schedules: Mapped[list["Schedule"]] = relationship("Schedule", back_populates="room", cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="room")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="room", cascade="all, delete-orphan")
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="room", cascade="all, delete-orphan")
 
 class RoomAmenity(Base):
     __tablename__ = "room_amenities"
@@ -91,3 +94,26 @@ class Booking(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="bookings")
     room: Mapped["Room"] = relationship("Room", back_populates="bookings")
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    room_id: Mapped[int] = mapped_column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    author_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, default=5)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    room: Mapped["Room"] = relationship("Room", back_populates="reviews")
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    __table_args__ = (UniqueConstraint("user_id", "room_id", name="uq_user_room_favorite"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    room_id: Mapped[int] = mapped_column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="favorites")
+    room: Mapped["Room"] = relationship("Room", back_populates="favorites")

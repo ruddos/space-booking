@@ -114,3 +114,18 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class ReviewResponse(BaseModel):
+    id: int
+    room_id: int
+    author_name: str
+    rating: int
+    text: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class FavoriteResponse(BaseModel):
+    id: int
+    room_id: int
+    room: Optional[RoomResponse] = None
+    model_config = ConfigDict(from_attributes=True)
