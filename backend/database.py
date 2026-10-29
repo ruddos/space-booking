@@ -9,7 +9,10 @@ async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_
 
 async def init_db():
     async with engine.begin() as conn:
+        # Создаем все новые таблицы (включая favorites и reviews)
         await conn.run_sync(Base.metadata.create_all)
+
+        # Безопасная миграция колонок для существующих таблиц
         migrations = [
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'Фотостудия';",
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS metro VARCHAR(100) DEFAULT 'м. Белорусская';",
