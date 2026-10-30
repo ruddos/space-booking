@@ -105,7 +105,7 @@ export default function Bookings() {
       {error && <p className="mt-4 rounded-2xl bg-danger-light px-5 py-4 font-semibold text-danger">{error}</p>}
 
       <div className="mt-4 overflow-x-auto rounded-[22px] border border-line bg-white">
-        <table className="w-full min-w-[900px] text-left text-[15px]">
+        <table className="w-full min-w-[1040px] text-left text-[15px]">
           <thead>
             <tr className="border-b border-line text-[13px] font-bold text-muted">
               <th className="px-5 py-3.5">Бронь</th>
@@ -121,18 +121,18 @@ export default function Bookings() {
             {visible.map((b) => (
               <tr key={b.id} className="align-top">
                 <td className="px-5 py-4">
-                  <div className="font-bold">{b.booking_number || `#${b.id}`}</div>
-                  <div className="text-[13px] text-muted">создана {formatDate(b.created_at)}</div>
+                  <div className="font-bold whitespace-nowrap">{b.booking_number || `#${b.id}`}</div>
+                  <div className="text-[13px] whitespace-nowrap text-muted">создана {formatDate(b.created_at)}</div>
                 </td>
                 <td className="px-3 py-4">
                   <div className="flex items-center gap-3">
                     <img src={b.room?.image_url} alt="" className="size-10 rounded-lg bg-line-soft object-cover" />
-                    <span className="font-bold">{b.room?.name}</span>
+                    <span className="font-bold whitespace-nowrap">{b.room?.name}</span>
                   </div>
                 </td>
                 <td className="px-3 py-4">
-                  <div className="font-semibold">{b.contact_name || '—'}</div>
-                  <div className="text-[13px] text-muted">{b.contact_phone || 'без телефона'}</div>
+                  <div className="font-semibold whitespace-nowrap">{b.contact_name || '—'}</div>
+                  <div className="text-[13px] whitespace-nowrap text-muted">{b.contact_phone || 'без телефона'}</div>
                   {(b.additional_services || b.comment) && (
                     <div className="mt-1 max-w-[220px] text-[13px] text-muted">
                       {b.additional_services && <div>+ {b.additional_services}</div>}
