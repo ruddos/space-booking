@@ -2,7 +2,12 @@ import asyncio
 from datetime import time
 from sqlalchemy import select
 from database import async_session_maker, init_db
-from models import Room, RoomAmenity, Schedule, Review, BlogPost
+from models import Room, RoomAmenity, Schedule, Review, BlogPost, User, UserRole
+from auth import hash_password
+
+# тестовый админ для входа в админку
+ADMIN_EMAIL = "admin@space.ru"
+ADMIN_PASSWORD = "admin123"
 
 ROOMS_DATA = [
     {
@@ -283,6 +288,17 @@ async def seed_database():
             )
             session.add(post)
             print(f"[OK] Добавлена статья блога: {post_data['title']}")
+
+        # 3. Администратор
+        a_res = await session.execute(select(User).where(User.email == ADMIN_EMAIL))
+        if not a_res.scalar_one_or_none():
+            session.add(User(
+                email=ADMIN_EMAIL,
+                hashed_password=hash_password(ADMIN_PASSWORD),
+                full_name="Администратор",
+                role=UserRole.ADMIN
+            ))
+            print(f"[OK] Добавлен администратор: {ADMIN_EMAIL}")
 
         await session.commit()
         print("\nБаза успешно наполнена данными из макетов Figma (залы, отзывы, статьи блога).")
