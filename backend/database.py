@@ -1,8 +1,13 @@
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
 from models import Base
 
-DATABASE_URL = "postgresql+asyncpg://postgres:postgrespassword@127.0.0.1:5432/space_db"
+# порт 5433, чтобы не конфликтовать с другими postgres на 5432
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgrespassword@127.0.0.1:5433/space_db",
+)
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
