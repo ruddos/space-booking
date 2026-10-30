@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { formatPrice } from '../../lib/format.js'
-import { categorySingular } from '../../lib/rooms.js'
+import { formatPrice } from '../../utils/format.js'
+import { categorySingular } from '../../utils/rooms.js'
 import { StarIcon } from '../Icons.jsx'
 import Header from '../Header.jsx'
 import SearchBar, { QUICK_FILTERS } from './SearchBar.jsx'
@@ -25,7 +25,7 @@ function FeaturedRoom({ room }) {
 
           <Link
             to={`/rooms/${room.id}`}
-            className="absolute inset-x-5 bottom-5 rounded-[20px] bg-white px-5 py-[18px] transition-transform hover:-translate-y-0.5"
+            className="absolute inset-x-5 bottom-5 rounded-[20px] bg-white px-5 text-ink py-[18px] transition-transform hover:-translate-y-0.5"
           >
             <div className="flex items-center justify-between gap-3">
               <span className="text-[18px] font-extrabold">

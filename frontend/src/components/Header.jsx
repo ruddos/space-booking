@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from '../lib/auth.jsx'
-import { initials } from '../lib/format.js'
+import { useAuth } from '../utils/auth.jsx'
+import { initials } from '../utils/format.js'
 import { Logo, SearchIcon } from './Icons.jsx'
 
 const NAV = [

@@ -1,4 +1,4 @@
-import { CATEGORIES } from '../../lib/rooms.js'
+import { CATEGORIES } from '../../utils/rooms.js'
 import { CalendarIcon, ChevronDownIcon, ClockIcon, FilterIcon, PinIcon, SearchIcon } from '../Icons.jsx'
 
 export const TIME_OPTIONS = [
@@ -62,7 +62,7 @@ export default function SearchBar({ filters, onChange, onSubmit }) {
   return (
     <form
       onSubmit={submit}
-      className="grid grid-cols-1 gap-1 rounded-[22px] bg-white p-[10px] sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_246px] lg:gap-0"
+      className="grid grid-cols-1 gap-1 rounded-[22px] bg-white p-[10px] text-ink sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_246px] lg:gap-0"
     >
       <Field icon={<PinIcon size={22} />} label="Город" divider={false}>
         <Select value="msk" onChange={() => {}} options={[{ value: 'msk', label: 'Москва' }]} />
