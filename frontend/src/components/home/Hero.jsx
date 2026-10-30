@@ -78,13 +78,13 @@ export default function Hero({ featured, filters, onFiltersChange, onSearch, qui
               бронируй за минуту.
             </p>
 
-            <dl className="mt-11 flex flex-wrap gap-y-4">
+            <dl className="mt-11 grid grid-cols-3 sm:flex">
               {STATS.map(([value, label], i) => (
                 <div
                   key={label}
-                  className={`${i ? 'border-l border-[#2a2a36] pl-10' : ''} ${i < STATS.length - 1 ? 'pr-10' : ''}`}
+                  className={`${i ? 'border-l border-[#2a2a36] pl-4 sm:pl-10' : ''} ${i < STATS.length - 1 ? 'pr-4 sm:pr-10' : ''}`}
                 >
-                  <dt className="text-[28px] leading-[1.35] font-extrabold">{value}</dt>
+                  <dt className="text-[22px] leading-[1.35] font-extrabold sm:text-[28px]">{value}</dt>
                   <dd className="text-[14px] text-on-dark-muted">{label}</dd>
                 </div>
               ))}
