@@ -37,11 +37,14 @@ export default function Dashboard() {
       setBookings(list)
       // загрузка залов на сегодня — по слотам, которые считает бэкенд
       const slots = await Promise.all(rooms.map((r) => api(`/rooms/${r.id}/available-slots`, { params: { date: today() } })))
+      // слоты нужны только для часов работы: прошедшие часы бэк тоже помечает занятыми,
+      // поэтому занятость считаем по самим броням
       setLoad(
         rooms.map((room, i) => {
-          const all = slots[i].slots
-          const busy = all.filter((s) => !s.is_available).length
-          return { room, busy, total: all.length, hours: `${slots[i].open_time}–${slots[i].close_time}` }
+          const busy = list
+            .filter((b) => b.room_id === room.id && b.status !== 'cancelled' && b.start_time.slice(0, 10) === today())
+            .reduce((h, b) => h + (new Date(b.end_time) - new Date(b.start_time)) / 3600000, 0)
+          return { room, busy, total: slots[i].slots.length, hours: `${slots[i].open_time}–${slots[i].close_time}` }
         }),
       )
     } catch (e) {
@@ -135,7 +138,6 @@ export default function Dashboard() {
               )
             })}
           </ul>
-          <p className="mt-4 text-[13px] text-muted">Занятые часы включают прошедшее время.</p>
         </section>
       </div>
     </div>
