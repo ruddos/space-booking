@@ -22,6 +22,13 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  async function register(form) {
+    const data = await api('/auth/register', { method: 'POST', body: form })
+    setToken(data.access_token)
+    setUser(data.user)
+    return data.user
+  }
+
   function logout() {
     clearToken()
     setUser(null)
@@ -30,7 +37,7 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )
