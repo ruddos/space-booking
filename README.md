@@ -26,23 +26,55 @@
    - Защищенный административный интерфейс управления сущностями.
 3. **Database (PostgreSQL):** реляционное хранение данных, связи сущностей, транзакционная целостность записей.
 
-## 5. Предварительная модель данных (ER)
+## 5. Модель данных (16 таблиц, нормализация 3НФ)
 1. **User (`users`):** `id`, `email`, `hashed_password`, `full_name`, `phone`, `role` (CLIENT / ADMIN), `created_at`.
-2. **Room (`rooms`):** `id`, `name`, `category`, `description`, `price_per_hour`, `capacity`, `area`, `metro`, `address`, `rating`, `reviews_count`, `image_url`, `is_active`.
-3. **Schedule (`schedules`):** `id`, `room_id` (FK), `day_of_week` (0-6), `open_time`, `close_time`.
-4. **Booking (`bookings`):** `id`, `booking_number` (SP-XXXXXX), `user_id` (FK), `room_id` (FK), `start_time`, `end_time`, `status` (PENDING / CONFIRMED / CANCELLED), `total_price`, `additional_services`, `comment`, `contact_name`, `contact_phone`, `created_at`.
-5. **RoomAmenity (`room_amenities`):** `id`, `room_id` (FK), `name` (свет, циклорама, гримерка).
-6. **Review (`reviews`):** `id`, `room_id` (FK), `author_name`, `rating`, `text`, `created_at`.
-7. **Favorite (`favorites`):** `id`, `user_id` (FK), `room_id` (FK).
-8. **BlogPost (`blog_posts`):** `id`, `title`, `category`, `read_time`, `description`, `image_url`, `is_featured`, `created_at`.
-9. **ContactMessage (`contact_messages`):** `id`, `name`, `email`, `topic`, `message`, `created_at`.
+2. **Studio (`studios`):** пространство/комплекс (`id`, `name`, `city`, `address`, `metro`, `phone`, `email`, `description`, `is_active`).
+3. **Room (`rooms`):** конкретный зал (`id`, `studio_id` (FK), `name`, `category`, `description`, `price_per_hour`, `capacity`, `area`, `metro`, `address`, `rating`, `reviews_count`, `image_url`, `is_active`).
+4. **RoomAmenity (`room_amenities`):** оснащение зала (`id`, `room_id` (FK), `name`).
+5. **Schedule (`schedules`):** часы работы по дням недели (`id`, `room_id` (FK), `day_of_week` 0-6, `open_time`, `close_time`).
+6. **Service (`services`):** каталог платных доп. услуг (`id`, `name`, `category`, `price`, `is_per_hour`, `description`, `is_active`).
+7. **BookingService (`booking_services`):** связующая таблица броней и услуг (`id`, `booking_id` (FK), `service_id` (FK), `quantity`, `price_at_booking`).
+8. **PromoCode (`promo_codes`):** система промокодов (`id`, `code`, `discount_percent`, `max_discount`, `max_uses`, `current_uses`, `is_active`).
+9. **Booking (`bookings`):** бронирования (`id`, `booking_number`, `user_id` (FK), `room_id` (FK), `promo_code_id` (FK), `start_time`, `end_time`, `status`, `total_price`, `discount_amount`, `additional_services`, `comment`, `contact_name`, `contact_phone`, `created_at`).
+10. **Payment (`payments`):** транзакции оплаты (`id`, `payment_number`, `booking_id` (FK), `amount`, `status` [PENDING, PAID, REFUNDED], `payment_method` [CARD, SBP, INVOICE], `transaction_id`, `paid_at`).
+11. **BookingStatusLog (`booking_status_logs`):** журнал аудита смены статусов (`id`, `booking_id` (FK), `old_status`, `new_status`, `changed_by_user_id` (FK), `comment`, `created_at`).
+12. **Notification (`notifications`):** уведомления клиентов (`id`, `user_id` (FK), `title`, `message`, `type`, `is_read`, `created_at`).
+13. **Review (`reviews`):** отзывы к залам (`id`, `room_id` (FK), `author_name`, `rating`, `text`, `created_at`).
+14. **Favorite (`favorites`):** избранные залы пользователя (`id`, `user_id` (FK), `room_id` (FK)).
+15. **BlogPost (`blog_posts`):** статьи блога (`id`, `title`, `category`, `read_time`, `description`, `image_url`, `is_featured`, `created_at`).
+16. **ContactMessage (`contact_messages`):** сообщения формы обратной связи (`id`, `name`, `email`, `topic`, `message`, `created_at`).
 
-## 6. План функционала по этапам
+## 6. Бизнес-логика бэкенда
+- **Динамическое ценообразование:**
+  - Коэффициент выходного дня (+15% в субботу и воскресенье).
+  - Скидка за длительность (10% при бронировании от 4 часов).
+  - Промокоды с ограничением по процентам и максимальной сумме скидки.
+- **Политика возврата при отмене бронирования:**
+  - Более 24 часов до начала: 100% возврат средств.
+  - От 6 до 24 часов: 50% возврат средств.
+  - Менее 6 часов: без возврата (штраф 100%).
+- **Транзакции и электронные квитанции:**
+  - Эндпоинт проведения оплаты `POST /api/bookings/{id}/pay`.
+  - Генерация чека/ваучера бронирования `GET /api/bookings/{id}/receipt`.
+  - Аудит каждого действия в `booking_status_logs`.
+
+## 7. План функционала по этапам
 - **КТ1 (Старт):** предметная область, стек, репозиторий, диаграмма прецедентов, архитектура.
-- **КТ2 (Промежуточный результат):** CRUD залов, миграции БД, базовая авторизация, скелет админки.
-- **КТ3 (Интеграция):** алгоритм проверки слотов на бэке, создание брони с фронта, смена статусов админом.
+- **КТ2 (Промежуточный результат):** CRUD залов, миграции Alembic, базовая авторизация, скелет админки.
+- **КТ3 (Интеграция и Enterprise):** алгоритм проверки слотов, промокоды, платежи, аудит, уведомления, автотесты.
 
-## 7. Инструкция по локальному запуску (Quick Start)
+## 8. Запуск автотестов (Pytest)
+```powershell
+pytest tests -v
+```
+
+## 9. Миграции базы данных (Alembic)
+```powershell
+cd backend
+alembic upgrade head
+```
+
+## 10. Инструкция по локальному запуску (Quick Start)
 
 ### Шаг 1. Запуск базы данных в Docker
 Убедитесь, что запущен **Docker Desktop**, затем в корне проекта выполните:
