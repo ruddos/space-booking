@@ -6,3 +6,7 @@ asyncpg
 greenlet
 bcrypt
 pyjwt
+alembic
+pytest
+httpx
+pytest-asyncio
