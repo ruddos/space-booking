@@ -26,7 +26,13 @@
    - Защищенный административный интерфейс управления сущностями.
 3. **Database (PostgreSQL):** реляционное хранение данных, связи сущностей, транзакционная целостность записей.
 
+### Диаграмма прецедентов (Use Case Diagram)
+![Диаграмма прецедентов](docs/use_case_diagram.png)
+
 ## 5. Модель данных (16 таблиц, нормализация 3НФ)
+
+### Схема базы данных (ER-диаграмма)
+![Схема базы данных](docs/database_schema.png)
 1. **User (`users`):** `id`, `email`, `hashed_password`, `full_name`, `phone`, `role` (CLIENT / ADMIN), `created_at`.
 2. **Studio (`studios`):** пространство/комплекс (`id`, `name`, `city`, `address`, `metro`, `phone`, `email`, `description`, `is_active`).
 3. **Room (`rooms`):** конкретный зал (`id`, `studio_id` (FK), `name`, `category`, `description`, `price_per_hour`, `capacity`, `area`, `metro`, `address`, `rating`, `reviews_count`, `image_url`, `is_active`).
@@ -147,11 +153,3 @@ npm run dev
 ### Административная панель (Admin)
 - `GET /api/admin/bookings` — просмотр всех броней в системе.
 - `PATCH /api/admin/bookings/{id}/status` — изменение статуса бронирования (CONFIRMED / CANCELLED / PENDING).
-
----
-
-## Предварительная модель данных
-![Database Schema](docs/database_schema.png)
-
-## Диаграмма прецедентов (Use Case)
-![Use Case Diagram](docs/use_case_diagram.png)
