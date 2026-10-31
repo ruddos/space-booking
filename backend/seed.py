@@ -2,7 +2,10 @@ import asyncio
 from datetime import time
 from sqlalchemy import select
 from database import async_session_maker, init_db
-from models import Room, RoomAmenity, Schedule, Review, BlogPost, User, UserRole
+from models import (
+    Room, RoomAmenity, Schedule, Review, BlogPost, User, UserRole,
+    Studio, Service, PromoCode, ServiceCategory
+)
 from auth import hash_password
 
 # тестовый админ для входа в админку
@@ -222,8 +225,79 @@ BLOG_POSTS_DATA = [
 
 async def seed_database():
     await init_db()
-
     async with async_session_maker() as session:
+        # 0. Студии (Studios)
+        studio_artplay = None
+        s_res = await session.execute(select(Studio).where(Studio.name == "SPACE Artplay"))
+        studio_artplay = s_res.scalar_one_or_none()
+        if not studio_artplay:
+            studio_artplay = Studio(
+                name="SPACE Artplay",
+                city="Москва",
+                address="Москва, ул. Нижняя Сыромятническая, 10, стр. 2",
+                metro="м. Чкаловская / Курская",
+                phone="+7 (495) 120-45-77",
+                email="artplay@space.ru",
+                description="Флагманский комплекс студий в арт-кластере Artplay: циклорамы, естественный свет и грузовой лифт."
+            )
+            session.add(studio_artplay)
+            await session.flush()
+            print("[OK] Добавлена студия: SPACE Artplay")
+
+        s_res2 = await session.execute(select(Studio).where(Studio.name == "SPACE Flacon"))
+        studio_flacon = s_res2.scalar_one_or_none()
+        if not studio_flacon:
+            studio_flacon = Studio(
+                name="SPACE Flacon",
+                city="Москва",
+                address="Москва, ул. Большая Новодмитровская, 36",
+                metro="м. Дмитровская",
+                phone="+7 (495) 120-45-88",
+                email="flacon@space.ru",
+                description="Креативные залы и лофты на дизайн-заводе Flacon с выходом на крышу."
+            )
+            session.add(studio_flacon)
+            await session.flush()
+            print("[OK] Добавлена студия: SPACE Flacon")
+
+        # 0.1 Каталог платных услуг (Services)
+        SERVICES_DATA = [
+            ("Дополнительный импульсный свет Profoto", ServiceCategory.EQUIPMENT, 800, False, "Моноблок D2 500 AirTTL со стойкой"),
+            ("Постоянный видеосвет Aputure 300d", ServiceCategory.EQUIPMENT, 1000, True, "Мощный светодиодный прибор с софтбоксом"),
+            ("Цветной бумажный фон (раскатка)", ServiceCategory.EQUIPMENT, 500, False, "Раскатка чистого фона под ноги (1 цвет)"),
+            ("Дым-машина с пультом DMX", ServiceCategory.EQUIPMENT, 1200, False, "Генератор безопасного плотного дыма для сцен"),
+            ("Гримерное место до съемки (1 час)", ServiceCategory.MAKEUP, 500, True, "Стол визажиста с нейтральной подсветкой"),
+            ("Ассистент по свету на площадке", ServiceCategory.ASSISTANT, 1500, True, "Помощь в установке световых схем и смена насадок"),
+        ]
+        for s_name, s_cat, s_price, s_hourly, s_desc in SERVICES_DATA:
+            chk = await session.execute(select(Service).where(Service.name == s_name))
+            if not chk.scalar_one_or_none():
+                session.add(Service(
+                    name=s_name,
+                    category=s_cat,
+                    price=s_price,
+                    is_per_hour=s_hourly,
+                    description=s_desc
+                ))
+                print(f"[OK] Добавлена услуга: {s_name} ({s_price} руб)")
+
+        # 0.2 Промокоды (PromoCodes)
+        PROMOS_DATA = [
+            ("SPACE2026", 15, 2000, 100),
+            ("STUDENT", 20, 1500, 200),
+            ("WELCOME", 10, None, 500)
+        ]
+        for p_code, p_pct, p_max, p_uses in PROMOS_DATA:
+            p_chk = await session.execute(select(PromoCode).where(PromoCode.code == p_code))
+            if not p_chk.scalar_one_or_none():
+                session.add(PromoCode(
+                    code=p_code,
+                    discount_percent=p_pct,
+                    max_discount=p_max,
+                    max_uses=p_uses
+                ))
+                print(f"[OK] Добавлен промокод: {p_code} (-{p_pct}%)")
+
         # 1. Залы
         for data in ROOMS_DATA:
             query = select(Room).where(Room.name == data["name"])
@@ -235,6 +309,7 @@ async def seed_database():
                 continue
 
             room = Room(
+                studio_id=studio_artplay.id if studio_artplay and "Flacon" not in data.get("address", "") else (studio_flacon.id if studio_flacon else None),
                 name=data["name"],
                 category=data.get("category", "Фотостудия"),
                 metro=data.get("metro", "м. Белорусская"),
