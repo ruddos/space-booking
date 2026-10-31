@@ -635,10 +635,192 @@ async def cancel_booking(
     if booking.status == BookingStatus.CANCELLED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Бронирование уже отменено")
 
+    # Интеллектуальный расчет политики отмены
+    refund_pct, refund_amt, refund_desc = calculate_cancellation_refund(booking.start_time, booking.total_price)
+
     booking.status = BookingStatus.CANCELLED
+
+    # Обновление статуса платежа
+    pay_res = await db.execute(
+        select(Payment).where(Payment.booking_id == booking.id, Payment.status == PaymentStatus.PAID)
+    )
+    payment = pay_res.scalars().first()
+    if payment:
+        payment.status = PaymentStatus.REFUNDED
+
+    # Аудит в BookingStatusLog
+    db.add(BookingStatusLog(
+        booking_id=booking.id,
+        old_status=BookingStatus.CONFIRMED.value,
+        new_status=BookingStatus.CANCELLED.value,
+        changed_by_user_id=current_user.id,
+        comment=f"Отменено. {refund_desc}. Возврат: {refund_amt} ₽ ({refund_pct}%)"
+    ))
+
+    # Уведомление
+    db.add(Notification(
+        user_id=booking.user_id,
+        title="Бронирование отменено",
+        message=f"Бронь {booking.booking_number} отменена. {refund_desc}. Сумма возврата: {refund_amt} ₽.",
+        type="warning"
+    ))
+
     await db.commit()
     await db.refresh(booking)
     return booking
+
+@app.post("/api/bookings/{booking_id}/pay", tags=["Payments"])
+async def pay_booking(
+    booking_id: int,
+    payment_method: str = Query("card", description="card, sbp, invoice"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Проведение оплаты бронирования через платежный шлюз (симуляция транзакции)"""
+    query = select(Booking).where(Booking.id == booking_id)
+    res = await db.execute(query)
+    booking = res.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Бронирование не найдено")
+
+    if booking.user_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на оплату этой брони")
+
+    # Ищем существующий платеж или создаем
+    p_query = select(Payment).where(Payment.booking_id == booking.id)
+    p_res = await db.execute(p_query)
+    payment = p_res.scalars().first()
+
+    method_enum = PaymentMethod.CARD
+    if payment_method.lower() == "sbp":
+        method_enum = PaymentMethod.SBP
+    elif payment_method.lower() == "invoice":
+        method_enum = PaymentMethod.INVOICE
+
+    now_utc = datetime.utcnow()
+    tx_code = f"TX-{uuid.uuid4().hex[:10].upper()}"
+
+    if not payment:
+        payment = Payment(
+            payment_number=generate_payment_number(),
+            booking_id=booking.id,
+            amount=booking.total_price,
+            status=PaymentStatus.PAID,
+            payment_method=method_enum,
+            transaction_id=tx_code,
+            paid_at=now_utc
+        )
+        db.add(payment)
+    else:
+        payment.status = PaymentStatus.PAID
+        payment.payment_method = method_enum
+        payment.transaction_id = tx_code
+        payment.paid_at = now_utc
+
+    booking.status = BookingStatus.CONFIRMED
+
+    # Лог аудита
+    db.add(BookingStatusLog(
+        booking_id=booking.id,
+        old_status=BookingStatus.PENDING.value,
+        new_status=BookingStatus.CONFIRMED.value,
+        changed_by_user_id=current_user.id,
+        comment=f"Оплата успешно проведена ({payment_method.upper()}). Транзакция: {tx_code}"
+    ))
+
+    # Уведомление
+    db.add(Notification(
+        user_id=booking.user_id,
+        title="Оплата успешно проведена",
+        message=f"Платеж на сумму {booking.total_price} ₽ по брони {booking.booking_number} успешно зачислен.",
+        type="success"
+    ))
+
+    await db.commit()
+    await db.refresh(payment)
+
+    return {
+        "success": True,
+        "message": "Оплата успешно подтверждена",
+        "payment": {
+            "payment_number": payment.payment_number,
+            "amount": payment.amount,
+            "status": payment.status.value,
+            "payment_method": payment.payment_method.value,
+            "transaction_id": payment.transaction_id,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None
+        }
+    }
+
+@app.get("/api/bookings/{booking_id}/receipt", tags=["Bookings"])
+async def get_booking_receipt(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Генерация электронного чека / ваучера бронирования"""
+    query = (
+        select(Booking)
+        .options(
+            selectinload(Booking.room).selectinload(Room.studio),
+            selectinload(Booking.services).selectinload(BookingService.service),
+            selectinload(Booking.payments)
+        )
+        .where(Booking.id == booking_id)
+    )
+    res = await db.execute(query)
+    booking = res.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Бронирование не найдено")
+
+    if booking.user_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет прав на просмотр квитанции")
+
+    duration_hours = max(1, int((booking.end_time - booking.start_time).total_seconds() // 3600))
+    paid_payment = next((p for p in booking.payments if p.status == PaymentStatus.PAID), None)
+
+    items = [
+        {
+            "name": f"Аренда зала «{booking.room.name}» ({duration_hours} ч.)",
+            "quantity": duration_hours,
+            "unit_price": booking.room.price_per_hour,
+            "total_price": booking.room.price_per_hour * duration_hours
+        }
+    ]
+
+    for bs in booking.services:
+        items.append({
+            "name": bs.service.name,
+            "quantity": bs.quantity,
+            "unit_price": bs.price_at_booking,
+            "total_price": bs.price_at_booking * bs.quantity
+        })
+
+    return {
+        "receipt_number": f"RCP-{booking.booking_number}",
+        "issued_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "booking_number": booking.booking_number,
+        "studio_name": booking.room.studio.name if booking.room.studio else "SPACE Studios",
+        "hall_name": booking.room.name,
+        "address": booking.room.address or "Москва",
+        "date": booking.start_time.strftime("%d.%m.%Y"),
+        "time_interval": f"{booking.start_time.strftime('%H:%M')} – {booking.end_time.strftime('%H:%M')}",
+        "customer": {
+            "name": booking.contact_name or current_user.full_name,
+            "phone": booking.contact_phone or current_user.phone,
+            "email": current_user.email
+        },
+        "items": items,
+        "discount_amount": booking.discount_amount,
+        "total_amount": booking.total_price,
+        "payment": {
+            "is_paid": paid_payment is not None,
+            "payment_number": paid_payment.payment_number if paid_payment else None,
+            "payment_method": paid_payment.payment_method.value if paid_payment else None,
+            "transaction_id": paid_payment.transaction_id if paid_payment else None,
+            "paid_at": paid_payment.paid_at.isoformat() if paid_payment and paid_payment.paid_at else None
+        }
+    }
 
 # --- 5. Избранное (Favorites, Экран 07) ---
 
