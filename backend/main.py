@@ -906,7 +906,60 @@ async def subscribe_newsletter(
 ):
     return {"status": "subscribed", "message": f"Email {data.email} успешно подписан на рассылку новых площадок!"}
 
-# --- 8. Административная панель (Admin) ---
+# --- 8. Уведомления пользователей (Notifications) ---
+
+@app.get("/api/notifications", response_model=List[NotificationResponse], tags=["Notifications"])
+async def get_my_notifications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получение списка персональных уведомлений пользователя"""
+    query = (
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+    )
+    res = await db.execute(query)
+    return res.scalars().all()
+
+@app.patch("/api/notifications/{notification_id}/read", tags=["Notifications"])
+async def mark_notification_read(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Пометить уведомление как прочитанное"""
+    query = select(Notification).where(
+        Notification.id == notification_id,
+        Notification.user_id == current_user.id
+    )
+    res = await db.execute(query)
+    notif = res.scalar_one_or_none()
+    if not notif:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Уведомление не найдено")
+
+    notif.is_read = True
+    await db.commit()
+    return {"success": True, "notification_id": notification_id}
+
+@app.post("/api/notifications/read-all", tags=["Notifications"])
+async def mark_all_notifications_read(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Пометить все уведомления как прочитанные"""
+    query = select(Notification).where(
+        Notification.user_id == current_user.id,
+        Notification.is_read == False
+    )
+    res = await db.execute(query)
+    notifs = res.scalars().all()
+    for n in notifs:
+        n.is_read = True
+    await db.commit()
+    return {"success": True, "count": len(notifs)}
+
+# --- 9. Административная панель (Admin) ---
 
 @app.get("/api/admin/bookings", response_model=List[BookingResponse], tags=["Admin"])
 async def get_all_bookings(
