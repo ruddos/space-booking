@@ -82,6 +82,8 @@ class BookingCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     additional_services: List[str] = []
+    service_ids: List[int] = []
+    promo_code: Optional[str] = None
     comment: Optional[str] = None
     contact_name: Optional[str] = None
     contact_phone: Optional[str] = None
@@ -91,10 +93,12 @@ class BookingResponse(BaseModel):
     booking_number: Optional[str] = None
     user_id: int
     room_id: int
+    promo_code_id: Optional[int] = None
     start_time: datetime
     end_time: datetime
     status: BookingStatus
     total_price: int
+    discount_amount: int = 0
     additional_services: Optional[str] = None
     comment: Optional[str] = None
     contact_name: Optional[str] = None
@@ -106,6 +110,78 @@ class BookingResponse(BaseModel):
 
 class BookingStatusUpdate(BaseModel):
     status: BookingStatus
+
+# --- Service & Promo & Payment Schemas ---
+class ServiceResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    price: int
+    is_per_hour: bool
+    description: Optional[str] = None
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+class PromoValidateRequest(BaseModel):
+    code: str
+    total_amount: int
+
+class PromoValidateResponse(BaseModel):
+    valid: bool
+    code: str
+    discount_percent: int
+    discount_amount: int
+    final_total: int
+    message: str
+
+class PriceCalculationRequest(BaseModel):
+    room_id: int
+    start_time: datetime
+    end_time: datetime
+    service_ids: List[int] = []
+    promo_code: Optional[str] = None
+
+class PriceCalculationResponse(BaseModel):
+    duration_hours: int
+    base_price_per_hour: int
+    effective_hourly_rate: int
+    is_weekend: bool
+    duration_discount_percent: int
+    duration_discount_amount: int
+    hall_subtotal: int
+    services_subtotal: int
+    promo_discount_amount: int
+    final_total: int
+
+class PaymentResponse(BaseModel):
+    id: int
+    payment_number: str
+    booking_id: int
+    amount: int
+    status: str
+    payment_method: str
+    transaction_id: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class BookingStatusLogResponse(BaseModel):
+    id: int
+    booking_id: int
+    old_status: Optional[str] = None
+    new_status: str
+    comment: Optional[str] = None
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+    type: str
+    is_read: bool
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Favorite Schemas ---
 class FavoriteResponse(BaseModel):

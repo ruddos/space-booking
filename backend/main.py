@@ -1,4 +1,5 @@
 import random
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, date, time, timedelta
 from typing import Optional, List
@@ -12,14 +13,24 @@ from sqlalchemy.orm import selectinload
 from database import init_db, get_db, engine
 from models import (
     Room, RoomAmenity, Schedule, Booking, BookingStatus,
-    User, UserRole, Review, Favorite, BlogPost, ContactMessage
+    User, UserRole, Review, Favorite, BlogPost, ContactMessage,
+    Studio, Service, BookingService, PromoCode, Payment, PaymentStatus,
+    PaymentMethod, BookingStatusLog, Notification
 )
 from schemas import (
     RoomCreate, RoomResponse, RoomDetailResponse,
     SlotResponse, AvailableSlotsResponse,
     BookingCreate, BookingResponse, BookingStatusUpdate,
     UserCreate, UserLogin, UserResponse, TokenResponse,
-    BlogPostResponse, ContactMessageCreate, NewsletterSubscribe
+    BlogPostResponse, ContactMessageCreate, NewsletterSubscribe,
+    ServiceResponse, PromoValidateRequest, PromoValidateResponse,
+    PriceCalculationRequest, PriceCalculationResponse,
+    PaymentResponse, BookingStatusLogResponse, NotificationResponse
+)
+from services.pricing_service import calculate_pricing_breakdown
+from services.booking_service import (
+    calculate_cancellation_refund, check_overbooking, 
+    generate_booking_number, generate_payment_number
 )
 from auth import (
     hash_password, verify_password,
@@ -328,6 +339,97 @@ async def get_available_slots(
         slots=slots
     )
 
+# --- Услуги, Промокоды и Калькулятор цен (Enterprise) ---
+
+@app.get("/api/services", response_model=List[ServiceResponse], tags=["Services"])
+async def get_services(db: AsyncSession = Depends(get_db)):
+    """Получение каталога платных дополнительных услуг и оборудования"""
+    res = await db.execute(select(Service).where(Service.is_active == True))
+    return res.scalars().all()
+
+@app.post("/api/promo/validate", response_model=PromoValidateResponse, tags=["Promo"])
+async def validate_promo_code(
+    promo_req: PromoValidateRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Проверка промокода и расчет скидки"""
+    query = select(PromoCode).where(
+        PromoCode.code == promo_req.code.strip().upper(),
+        PromoCode.is_active == True
+    )
+    res = await db.execute(query)
+    promo = res.scalar_one_or_none()
+
+    if not promo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Промокод не найден или срок его действия истек"
+        )
+
+    if promo.current_uses >= promo.max_uses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Лимит использований данного промокода исчерпан"
+        )
+
+    calculated_discount = int(promo_req.total_amount * (promo.discount_percent / 100.0))
+    if promo.max_discount and calculated_discount > promo.max_discount:
+        discount_amount = promo.max_discount
+    else:
+        discount_amount = calculated_discount
+
+    final_total = max(0, promo_req.total_amount - discount_amount)
+    return PromoValidateResponse(
+        valid=True,
+        code=promo.code,
+        discount_percent=promo.discount_percent,
+        discount_amount=discount_amount,
+        final_total=final_total,
+        message=f"Промокод применен! Скидка {promo.discount_percent}% (-{discount_amount} ₽)"
+    )
+
+@app.post("/api/pricing/calculate", response_model=PriceCalculationResponse, tags=["Bookings"])
+async def calculate_price(
+    req: PriceCalculationRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Калькулятор стоимости бронирования: выходные, скидка от 4 часов, услуги и промокод"""
+    room_res = await db.execute(select(Room).where(Room.id == req.room_id, Room.is_active == True))
+    room = room_res.scalar_one_or_none()
+    if not room:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Зал не найден")
+
+    services_with_qty = []
+    if req.service_ids:
+        svc_res = await db.execute(select(Service).where(Service.id.in_(req.service_ids)))
+        for svc in svc_res.scalars().all():
+            services_with_qty.append((svc, 1))
+
+    promo = None
+    if req.promo_code:
+        promo_res = await db.execute(select(PromoCode).where(PromoCode.code == req.promo_code.strip().upper(), PromoCode.is_active == True))
+        promo = promo_res.scalar_one_or_none()
+
+    breakdown = calculate_pricing_breakdown(
+        price_per_hour=room.price_per_hour,
+        start_time=req.start_time,
+        end_time=req.end_time,
+        services=services_with_qty,
+        promo_code=promo
+    )
+    return PriceCalculationResponse(
+        duration_hours=breakdown["duration_hours"],
+        base_price_per_hour=breakdown["base_price_per_hour"],
+        effective_hourly_rate=breakdown["effective_hourly_rate"],
+        is_weekend=breakdown["is_weekend"],
+        duration_discount_percent=breakdown["duration_discount_percent"],
+        duration_discount_amount=breakdown["duration_discount_amount"],
+        hall_subtotal=breakdown["hall_subtotal"],
+        services_subtotal=breakdown["services_subtotal"],
+        promo_discount_amount=breakdown["promo_discount_amount"],
+        final_total=breakdown["final_total"]
+    )
+
 # --- 4. Бронирования (Bookings) ---
 
 @app.post(
@@ -382,41 +484,100 @@ async def create_booking(
         )
 
     # Защита от овербукинга
-    overlap_res = await db.execute(
-        select(Booking).where(
-            Booking.room_id == room.id,
-            Booking.status != BookingStatus.CANCELLED,
-            Booking.start_time < end_time,
-            Booking.end_time > start_time
-        )
-    )
-    if overlap_res.scalar_one_or_none():
+    is_busy = await check_overbooking(db, room.id, start_time, end_time)
+    if is_busy:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Выбранное время уже занято другой бронью"
         )
 
-    duration_hours = (end_time - start_time).total_seconds() / 3600.0
-    hours_price = int(round(duration_hours * room.price_per_hour))
-    services_price = sum(ADDITIONAL_SERVICES_PRICING.get(s, 0) for s in booking_data.additional_services)
-    total_price = hours_price + services_price
+    # Проверка промокода
+    promo_obj = None
+    if booking_data.promo_code:
+        promo_res = await db.execute(
+            select(PromoCode).where(PromoCode.code == booking_data.promo_code.strip().upper(), PromoCode.is_active == True)
+        )
+        promo_obj = promo_res.scalar_one_or_none()
+        if promo_obj and promo_obj.current_uses < promo_obj.max_uses:
+            promo_obj.current_uses += 1
 
-    booking_code = f"SP-{random.randint(100000, 999999)}"
+    # Загрузка выбранных услуг
+    selected_services = []
+    if booking_data.service_ids:
+        s_res = await db.execute(select(Service).where(Service.id.in_(booking_data.service_ids)))
+        for s in s_res.scalars().all():
+            selected_services.append((s, 1))
+
+    # Расчет цены
+    pricing = calculate_pricing_breakdown(
+        price_per_hour=room.price_per_hour,
+        start_time=start_time,
+        end_time=end_time,
+        services=selected_services,
+        promo_code=promo_obj
+    )
+
+    # Обратная совместимость с текстовыми услугами из фронтенда Даниэля
+    extra_text_price = sum(ADDITIONAL_SERVICES_PRICING.get(s, 0) for s in booking_data.additional_services)
+    total_price = pricing["final_total"] + extra_text_price
+
+    booking_code = generate_booking_number()
 
     new_booking = Booking(
         booking_number=booking_code,
         user_id=current_user.id,
         room_id=room.id,
+        promo_code_id=promo_obj.id if promo_obj else None,
         start_time=start_time,
         end_time=end_time,
         status=BookingStatus.CONFIRMED,
         total_price=total_price,
+        discount_amount=pricing["promo_discount_amount"] + pricing["duration_discount_amount"],
         additional_services=", ".join(booking_data.additional_services) if booking_data.additional_services else None,
         comment=booking_data.comment,
         contact_name=booking_data.contact_name or current_user.full_name,
         contact_phone=booking_data.contact_phone or current_user.phone
     )
     db.add(new_booking)
+    await db.flush()
+
+    # Сохранение услуг в связующую таблицу (3НФ)
+    for svc, qty in selected_services:
+        db.add(BookingService(
+            booking_id=new_booking.id,
+            service_id=svc.id,
+            quantity=qty,
+            price_at_booking=svc.price
+        ))
+
+    # Создание записи в таблице платежей (PENDING)
+    db.add(Payment(
+        payment_number=generate_payment_number(),
+        booking_id=new_booking.id,
+        amount=total_price,
+        status=PaymentStatus.PAID,  # по умолчанию при создании отмечаем оплаченным
+        payment_method=PaymentMethod.CARD,
+        transaction_id=f"TX-{uuid.uuid4().hex[:10].upper()}",
+        paid_at=datetime.utcnow()
+    ))
+
+    # Запись в журнал аудита (BookingStatusLog)
+    db.add(BookingStatusLog(
+        booking_id=new_booking.id,
+        old_status=None,
+        new_status=BookingStatus.CONFIRMED.value,
+        changed_by_user_id=current_user.id,
+        comment="Бронирование успешно создано клиентом"
+    ))
+
+    # Создание уведомления для клиента
+    db.add(Notification(
+        user_id=current_user.id,
+        title="Бронирование создано",
+        message=f"Зал «{room.name}» забронирован на {start_time.strftime('%d.%m.%Y %H:%M')}. Номер: {booking_code}",
+        type="success"
+    ))
+
     await db.commit()
 
     query = (
