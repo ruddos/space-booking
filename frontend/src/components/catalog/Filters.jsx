@@ -1,3 +1,4 @@
+import { plural } from '../../utils/format.js'
 import { AREA_OPTIONS, FEATURES } from '../../utils/rooms.js'
 import { CheckIcon } from '../Icons.jsx'
 
@@ -152,7 +153,7 @@ export default function Filters({ value, onChange, onReset, found, onShow }) {
         onClick={onShow}
         className="mt-6 h-[52px] w-full rounded-[14px] bg-accent text-[16px] font-bold text-white transition-colors hover:bg-accent-hover"
       >
-        Показать {found} {found === 1 ? 'площадку' : found > 1 && found < 5 ? 'площадки' : 'площадок'}
+        Показать {found} {plural(found, ['площадку', 'площадки', 'площадок'])}
       </button>
     </div>
   )
