@@ -19,6 +19,11 @@ export default function Receipt() {
   if (error) return <p className="p-10 text-center font-semibold text-danger">{error}</p>
   if (!r) return <p className="p-10 text-center text-muted">Загружаем чек…</p>
 
+  // бэк пишет аренду по базовой ставке, а в итог включает надбавку за выходные —
+  // показываем разницу отдельной строкой, чтобы чек сходился
+  const itemsSum = r.items.reduce((sum, it) => sum + it.total_price, 0)
+  const surcharge = r.total_amount - (itemsSum - r.discount_amount)
+
   const paidAt = r.payment.paid_at && new Date(r.payment.paid_at + 'Z').toLocaleString('ru-RU')
 
   return (
@@ -95,6 +100,12 @@ export default function Receipt() {
                 <td className="py-3 text-right font-bold whitespace-nowrap">{formatPrice(it.total_price)}</td>
               </tr>
             ))}
+            {surcharge > 0 && (
+              <tr className="border-b border-line-soft">
+                <td className="py-3">Надбавка за выходной день</td>
+                <td className="py-3 text-right font-bold whitespace-nowrap">+{formatPrice(surcharge)}</td>
+              </tr>
+            )}
             {r.discount_amount > 0 && (
               <tr className="border-b border-line-soft text-success">
                 <td className="py-3">Скидки</td>
