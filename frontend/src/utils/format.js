@@ -31,3 +31,22 @@ export function plural(n, forms) {
   if (b === 1) return forms[0]
   return forms[2]
 }
+
+// дата в формате YYYY-MM-DD по местному времени (для апи)
+export const isoDate = (d = new Date()) => d.toLocaleDateString('sv-SE')
+
+export function addDays(d, n) {
+  const x = new Date(d)
+  x.setDate(x.getDate() + n)
+  return x
+}
+
+// расписание в бэке: 0 — понедельник (как weekday() в python)
+export const weekdayIndex = (d) => (d.getDay() + 6) % 7
+
+export const hhmm = (t) => (t ? t.slice(0, 5) : '')
+
+export function formatLongDate(d) {
+  const date = typeof d === 'string' ? new Date(d + 'T00:00') : d
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })
+}
