@@ -141,7 +141,12 @@ export default function Bookings() {
                   )}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">{formatSlot(b.start_time, b.end_time)}</td>
-                <td className="px-3 py-4 text-right font-extrabold whitespace-nowrap">{formatPrice(b.total_price)}</td>
+                <td className="px-3 py-4 text-right whitespace-nowrap">
+                  <div className="font-extrabold">{formatPrice(b.total_price)}</div>
+                  {b.discount_amount > 0 && (
+                    <div className="text-[13px] font-semibold text-success">скидка −{formatPrice(b.discount_amount)}</div>
+                  )}
+                </td>
                 <td className="px-3 py-4">
                   <StatusBadge status={b.status} />
                 </td>

@@ -1,12 +1,13 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../utils/auth.jsx'
 import { initials } from '../../utils/format.js'
-import { BuildingIcon, GridIcon, LogoutIcon, Logo, TicketIcon } from '../Icons.jsx'
+import { BuildingIcon, GridIcon, LogoutIcon, Logo, ReceiptIcon, TicketIcon } from '../Icons.jsx'
 
 const NAV = [
   { to: '/admin', label: 'Сводка', icon: GridIcon, end: true },
   { to: '/admin/bookings', label: 'Бронирования', icon: TicketIcon },
   { to: '/admin/rooms', label: 'Площадки', icon: BuildingIcon },
+  { to: '/admin/services', label: 'Услуги', icon: ReceiptIcon },
 ]
 
 export default function AdminLayout() {
