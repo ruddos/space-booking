@@ -1,8 +1,12 @@
 const TOKEN_KEY = 'space_token'
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY)
-export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
+// без «Запомнить меня» токен живет только до закрытия вкладки
+export const getToken = () => localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
+export const setToken = (token, remember = true) => (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
+export const clearToken = () => {
+  localStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+}
 
 export class ApiError extends Error {
   constructor(message, status) {
