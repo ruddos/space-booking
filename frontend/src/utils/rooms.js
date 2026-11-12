@@ -24,3 +24,71 @@ export function roomMeta(room) {
   const size = room.category === 'Коворкинги' ? `${room.capacity} мест` : `${room.area} м²`
   return [room.metro, size].filter(Boolean).join(' · ')
 }
+
+const text = (room) =>
+  [room.description, ...(room.amenities || []).map((a) => a.name)].join(' ').toLowerCase()
+
+// фильтры «Особенности» в каталоге — ищем по оборудованию и описанию
+export const FEATURES = [
+  { key: 'cyclorama', label: 'Циклорама', words: ['циклорам'] },
+  { key: 'daylight', label: 'Дневной свет', words: ['дневн', 'окна'] },
+  { key: 'makeup', label: 'Гримёрка', words: ['грим'] },
+  { key: 'flash', label: 'Импульсный свет', words: ['импульс', 'profoto', 'godox'] },
+  { key: 'parking', label: 'Парковка', words: ['парков'] },
+  { key: 'pets', label: 'Можно с животными', words: ['животн'] },
+]
+
+export const hasFeature = (room, key) => {
+  const f = FEATURES.find((x) => x.key === key)
+  const t = text(room)
+  return f.words.some((w) => t.includes(w))
+}
+
+// короткие теги на карточку каталога
+const TAGS = [
+  ['Циклорама', ['циклорам']],
+  ['Окна', ['окна']],
+  ['Гримёрка', ['грим']],
+  ['Импульс', ['импульс', 'profoto', 'godox']],
+  ['Дым-машина', ['дым']],
+  ['Сцена', ['сцена']],
+  ['Звук', ['звук']],
+  ['Wi-Fi', ['wi-fi']],
+  ['Кофе', ['кофе']],
+]
+
+export function roomFeatures(room) {
+  const names = (room.amenities || []).map((a) => a.name.toLowerCase())
+  return TAGS.filter(([, words]) => names.some((n) => words.some((w) => n.includes(w))))
+    .map(([label]) => label)
+    .slice(0, 3)
+}
+
+export const AREA_OPTIONS = [
+  { key: 's', label: 'до 50 м²', test: (a) => a < 50 },
+  { key: 'm', label: '50–100 м²', test: (a) => a >= 50 && a <= 100 },
+  { key: 'l', label: '100+ м²', test: (a) => a > 100 },
+]
+
+export const SORTS = [
+  { key: 'rec', label: 'Рекомендуем' },
+  { key: 'cheap', label: 'Сначала дешевле' },
+  { key: 'expensive', label: 'Сначала дороже' },
+  { key: 'rating', label: 'По рейтингу' },
+]
+
+export function sortRooms(list, key) {
+  const arr = [...list]
+  if (key === 'cheap') return arr.sort((a, b) => a.price_per_hour - b.price_per_hour)
+  if (key === 'expensive') return arr.sort((a, b) => b.price_per_hour - a.price_per_hour)
+  if (key === 'rating') return arr.sort((a, b) => b.rating - a.rating)
+  // рекомендуем: сначала со свободными окнами, потом по рейтингу и отзывам
+  return arr.sort(
+    (a, b) =>
+      Number(b.today_available_slots.length > 0) - Number(a.today_available_slots.length > 0) ||
+      b.rating * Math.log(b.reviews_count + 1) - a.rating * Math.log(a.reviews_count + 1),
+  )
+}
+
+export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(address)}&z=15`
+export const routeUrl = (address) => `https://yandex.ru/maps/?rtext=~${encodeURIComponent(address)}`

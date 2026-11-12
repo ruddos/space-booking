@@ -1,17 +1,22 @@
 import { Link } from 'react-router-dom'
 import { formatPrice } from '../utils/format.js'
-import { roomBadge, roomMeta } from '../utils/rooms.js'
+import { roomBadge, roomFeatures, roomMeta } from '../utils/rooms.js'
 import { HeartIcon, StarIcon } from './Icons.jsx'
 
-export default function RoomCard({ room, favorite = false, onFavorite }) {
+function Slot({ time }) {
+  return <span className="rounded-lg bg-accent-light px-2.5 py-1.5 text-[13px] font-bold text-accent-hover">{time}</span>
+}
+
+// catalog — карточка для каталога: с оборудованием и числом отзывов
+export default function RoomCard({ room, favorite = false, onFavorite, catalog = false }) {
   const slots = room.today_available_slots || []
 
   return (
     <article className="flex flex-col overflow-hidden rounded-[22px] border border-line bg-white transition-shadow hover:shadow-[0_12px_32px_rgba(15,15,20,0.08)]">
-      <div className="relative h-[190px] bg-line-soft">
-        {room.image_url && (
-          <img src={room.image_url} alt={room.name} loading="lazy" className="size-full object-cover" />
-        )}
+      <div className={`relative bg-line-soft ${catalog ? 'h-[200px]' : 'h-[190px]'}`}>
+        <Link to={`/rooms/${room.id}`} tabIndex={-1}>
+          {room.image_url && <img src={room.image_url} alt={room.name} loading="lazy" className="size-full object-cover" />}
+        </Link>
         <span className="absolute top-3 left-3 rounded-[15px] bg-white px-2.5 py-1.5 text-[13px] font-bold">
           {roomBadge(room)}
         </span>
@@ -30,21 +35,37 @@ export default function RoomCard({ room, favorite = false, onFavorite }) {
 
       <div className="flex flex-1 flex-col p-[18px]">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="truncate text-[18px] font-extrabold">{room.name}</h3>
-          <span className="flex items-center gap-1 text-[14px] font-bold">
+          <h3 className="truncate text-[18px] font-extrabold">
+            <Link to={`/rooms/${room.id}`} className="hover:text-accent">
+              {room.name}
+            </Link>
+          </h3>
+          <span className="flex shrink-0 items-center gap-1 text-[14px] font-bold">
             <StarIcon size={14} className="text-star" />
             {room.rating}
+            {catalog && <span className="font-medium text-muted">({room.reviews_count})</span>}
           </span>
         </div>
         <p className="mt-1 text-[14px] text-muted">{roomMeta(room)}</p>
 
-        <div className="mt-3 flex min-h-[30px] flex-wrap gap-1.5">
-          {slots.length ? (
-            slots.slice(0, 3).map((t) => (
-              <span key={t} className="rounded-lg bg-accent-light px-2.5 py-1.5 text-[13px] font-bold text-accent-hover">
-                {t}
+        {catalog && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {roomFeatures(room).map((f) => (
+              <span key={f} className="rounded-lg bg-[#f2f2f6] px-2 py-1 text-[13px] font-semibold">
+                {f}
               </span>
-            ))
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex min-h-[30px] flex-wrap items-center gap-1.5">
+          {slots.length ? (
+            <>
+              {catalog && <span className="mr-0.5 text-[13px] font-bold text-success">Сегодня:</span>}
+              {slots.slice(0, 3).map((t) => (
+                <Slot key={t} time={t} />
+              ))}
+            </>
           ) : (
             <span className="py-1.5 text-[13px] font-semibold text-muted">Сегодня свободных окон нет</span>
           )}
@@ -55,7 +76,7 @@ export default function RoomCard({ room, favorite = false, onFavorite }) {
             {formatPrice(room.price_per_hour)} <span className="text-[14px] font-medium text-muted">/ час</span>
           </span>
           <Link to={`/rooms/${room.id}`} className="text-[14px] font-bold text-accent-hover hover:underline">
-            Выбрать →
+            {catalog ? 'Подробнее →' : 'Выбрать →'}
           </Link>
         </div>
       </div>
