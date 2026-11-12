@@ -6,6 +6,7 @@ import Dashboard from './pages/admin/Dashboard.jsx'
 import Rooms from './pages/admin/Rooms.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
 import Booking from './pages/Booking.jsx'
+import BookingDone from './pages/BookingDone.jsx'
 import Catalog from './pages/Catalog.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
@@ -23,6 +24,14 @@ export default function App() {
         element={
           <RequireAuth>
             <Booking />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/booking/done/:id"
+        element={
+          <RequireAuth>
+            <BookingDone />
           </RequireAuth>
         }
       />
