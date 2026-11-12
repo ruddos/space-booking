@@ -67,3 +67,40 @@ body {
     font-size: 30px;
   }
 }
+
+/* двойной ползунок цены: два input range друг на друге */
+.range-dual {
+  position: relative;
+  height: 18px;
+}
+
+.range-dual input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  background: none;
+  pointer-events: none;
+}
+
+.range-dual input::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range-dual input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  pointer-events: auto;
+  cursor: pointer;
+}
