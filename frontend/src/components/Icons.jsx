@@ -131,6 +131,69 @@ export const RefreshIcon = (p) => (
   </Icon>
 )
 
+export const MenuIcon = (p) => (
+  <Icon {...p}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Icon>
+)
+
+export const ShareIcon = (p) => (
+  <Icon {...p}>
+    <circle cx="18" cy="5.5" r="2.5" />
+    <circle cx="6" cy="12" r="2.5" />
+    <circle cx="18" cy="18.5" r="2.5" />
+    <path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1" />
+  </Icon>
+)
+
+export const BellIcon = (p) => (
+  <Icon {...p}>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" />
+    <path d="M10 20.5a2.2 2.2 0 0 0 4 0" />
+  </Icon>
+)
+
+export const ReceiptIcon = (p) => (
+  <Icon {...p}>
+    <path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3v-17Z" />
+    <path d="M9 8.5h6M9 12h6M9 15.5h3.5" />
+  </Icon>
+)
+
+export const UserIcon = (p) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8.5" r="4" />
+    <path d="M4.5 20.5c.8-4 3.8-6.3 7.5-6.3s6.7 2.3 7.5 6.3" />
+  </Icon>
+)
+
+export const RouteIcon = (p) => (
+  <Icon {...p}>
+    <circle cx="6" cy="18" r="2.5" />
+    <circle cx="18" cy="6" r="2.5" />
+    <path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" />
+  </Icon>
+)
+
+export const DownloadIcon = (p) => (
+  <Icon {...p}>
+    <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+  </Icon>
+)
+
+export const CheckCircleIcon = (p) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12.3 2.8 2.7L16 9.5" />
+  </Icon>
+)
+
+export const ArrowLeftIcon = (p) => (
+  <Icon {...p}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </Icon>
+)
+
 export function Logo({ dark = false, className = '' }) {
   const color = dark ? '#ffffff' : '#0f0f14'
   return (
