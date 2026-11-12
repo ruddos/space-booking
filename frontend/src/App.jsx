@@ -4,6 +4,8 @@ import RequireAdmin from './components/admin/RequireAdmin.jsx'
 import Bookings from './pages/admin/Bookings.jsx'
 import Dashboard from './pages/admin/Dashboard.jsx'
 import Rooms from './pages/admin/Rooms.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
+import Booking from './pages/Booking.jsx'
 import Catalog from './pages/Catalog.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
@@ -16,6 +18,14 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/rooms/:id" element={<Room />} />
+      <Route
+        path="/booking/:roomId"
+        element={
+          <RequireAuth>
+            <Booking />
+          </RequireAuth>
+        }
+      />
       <Route path="/login" element={<Login />} />
       <Route
         path="/admin"
