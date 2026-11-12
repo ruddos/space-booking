@@ -6,7 +6,12 @@ import Dashboard from './pages/admin/Dashboard.jsx'
 import Rooms from './pages/admin/Rooms.jsx'
 import AccountLayout from './components/account/AccountLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import Favorites from './pages/account/Favorites.jsx'
 import MyBookings from './pages/account/MyBookings.jsx'
+import Notifications from './pages/account/Notifications.jsx'
+import Payments from './pages/account/Payments.jsx'
+import Profile from './pages/account/Profile.jsx'
+import Receipt from './pages/account/Receipt.jsx'
 import Booking from './pages/Booking.jsx'
 import BookingDone from './pages/BookingDone.jsx'
 import Catalog from './pages/Catalog.jsx'
@@ -46,7 +51,19 @@ export default function App() {
         }
       >
         <Route index element={<MyBookings />} />
+        <Route path="favorites" element={<Favorites />} />
+        <Route path="payments" element={<Payments />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="notifications" element={<Notifications />} />
       </Route>
+      <Route
+        path="/account/receipt/:id"
+        element={
+          <RequireAuth>
+            <Receipt />
+          </RequireAuth>
+        }
+      />
       <Route path="/login" element={<Login />} />
       <Route
         path="/admin"
