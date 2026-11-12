@@ -4,7 +4,9 @@ import RequireAdmin from './components/admin/RequireAdmin.jsx'
 import Bookings from './pages/admin/Bookings.jsx'
 import Dashboard from './pages/admin/Dashboard.jsx'
 import Rooms from './pages/admin/Rooms.jsx'
+import AccountLayout from './components/account/AccountLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import MyBookings from './pages/account/MyBookings.jsx'
 import Booking from './pages/Booking.jsx'
 import BookingDone from './pages/BookingDone.jsx'
 import Catalog from './pages/Catalog.jsx'
@@ -35,6 +37,16 @@ export default function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/account"
+        element={
+          <RequireAuth>
+            <AccountLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<MyBookings />} />
+      </Route>
       <Route path="/login" element={<Login />} />
       <Route
         path="/admin"
