@@ -12,6 +12,8 @@ import Notifications from './pages/account/Notifications.jsx'
 import Payments from './pages/account/Payments.jsx'
 import Profile from './pages/account/Profile.jsx'
 import Receipt from './pages/account/Receipt.jsx'
+import About from './pages/About.jsx'
+import Blog from './pages/Blog.jsx'
 import Booking from './pages/Booking.jsx'
 import BookingDone from './pages/BookingDone.jsx'
 import Catalog from './pages/Catalog.jsx'
@@ -25,6 +27,9 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/catalog" element={<Catalog />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contacts" element={<About />} />
       <Route path="/rooms/:id" element={<Room />} />
       <Route
         path="/booking/:roomId"
