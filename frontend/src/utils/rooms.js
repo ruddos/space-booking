@@ -90,5 +90,9 @@ export function sortRooms(list, key) {
   )
 }
 
-export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(address)}&z=15`
-export const routeUrl = (address) => `https://yandex.ru/maps/?rtext=~${encodeURIComponent(address)}`
+// поиск привязан к центру Москвы, иначе «ул. Лесная, 7» находится в Подмосковье
+const MOSCOW = 'll=37.6176%2C55.7558&sspn=0.35%2C0.2&rl=1'
+const withCity = (address) => (address.includes('Москва') ? address : `Москва, ${address}`)
+
+export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?${MOSCOW}&text=${encodeURIComponent(withCity(address))}`
+export const routeUrl = (address) => `https://yandex.ru/maps/?rtext=~${encodeURIComponent(withCity(address))}`
