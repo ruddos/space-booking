@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { plural } from '../../utils/format.js'
 import { CATEGORIES } from '../../utils/rooms.js'
 import { ArrowRightIcon } from '../Icons.jsx'
@@ -10,9 +11,9 @@ export default function Categories({ rooms, onSelect }) {
         title="Популярные категории"
         text="Выбери, что тебе нужно — и найди идеальное пространство"
         action={
-          <button type="button" onClick={() => onSelect('')} className="text-[16px] font-bold text-accent hover:underline">
+          <Link to="/catalog" className="text-[16px] font-bold text-accent hover:underline">
             Смотреть все →
-          </button>
+          </Link>
         }
       />
 

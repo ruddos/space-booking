@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Footer from '../components/Footer.jsx'
 import Categories from '../components/home/Categories.jsx'
 import FreeToday from '../components/home/FreeToday.jsx'
@@ -9,7 +8,7 @@ import Owners from '../components/home/Owners.jsx'
 import Reviews from '../components/home/Reviews.jsx'
 import { QUICK_FILTERS } from '../components/home/SearchBar.jsx'
 import { api } from '../utils/api.js'
-import { useAuth } from '../utils/auth.jsx'
+import { useFavorites } from '../utils/useFavorites.js'
 
 const EMPTY_FILTERS = { category: '', time: '' }
 
@@ -30,8 +29,6 @@ function inTimeRange(room, time) {
 }
 
 export default function Home() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
 
   const [allRooms, setAllRooms] = useState([])
   const [rooms, setRooms] = useState([])
@@ -41,20 +38,13 @@ export default function Home() {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState(EMPTY_FILTERS)
   const [quick, setQuick] = useState([])
-  const [favorites, setFavorites] = useState([])
+  const { favorites, toggleFavorite } = useFavorites()
 
   const filtered = Boolean(applied.category || applied.time || quick.length)
 
   useEffect(() => {
     api('/rooms').then(setAllRooms).catch(() => setAllRooms([]))
   }, [])
-
-  useEffect(() => {
-    if (!user) return setFavorites([])
-    api('/favorites')
-      .then((list) => setFavorites(list.map((r) => r.id)))
-      .catch(() => setFavorites([]))
-  }, [user])
 
   // параметры запроса: категория + быстрые фильтры-чипсы
   const params = useMemo(() => {
@@ -116,18 +106,6 @@ export default function Home() {
     setFilters(EMPTY_FILTERS)
     setApplied(EMPTY_FILTERS)
     setQuick([])
-  }
-
-  async function toggleFavorite(room) {
-    if (!user) return navigate('/login')
-    const isFav = favorites.includes(room.id)
-    setFavorites((f) => (isFav ? f.filter((id) => id !== room.id) : [...f, room.id]))
-    try {
-      await api(`/favorites/${room.id}`, { method: isFav ? 'DELETE' : 'POST' })
-    } catch {
-      // откатываем, если сервер не принял
-      setFavorites((f) => (isFav ? [...f, room.id] : f.filter((id) => id !== room.id)))
-    }
   }
 
   return (
