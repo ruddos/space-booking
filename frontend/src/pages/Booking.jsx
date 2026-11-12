@@ -77,7 +77,8 @@ export default function Booking() {
   }, [slots, start])
 
   useEffect(() => {
-    if (start && duration > maxRun) setDuration(Math.max(1, maxRun))
+    // пока слоты грузятся, maxRun = 0 — не трогаем выбранную длительность
+    if (start && maxRun > 0 && duration > maxRun) setDuration(maxRun)
   }, [start, maxRun, duration])
 
   const end = start ? plusHours(start, duration) : ''
