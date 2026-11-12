@@ -42,6 +42,11 @@ function ContactForm() {
   const [state, setState] = useState(null)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
+  // профиль может подгрузиться уже после открытия страницы
+  useEffect(() => {
+    if (user) setForm((f) => ({ ...f, name: f.name || user.full_name, email: f.email || user.email }))
+  }, [user])
+
   async function submit(e) {
     e.preventDefault()
     setState({ sending: true })
