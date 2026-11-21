@@ -25,7 +25,7 @@ def calculate_cancellation_refund(start_time: datetime, total_price: int) -> tup
     - Менее 6 часов: возврат 0% (штраф 100%)
     Возвращает: (refund_percent, refund_amount, description)
     """
-    now = datetime.utcnow()
+    now = datetime.now()
     hours_left = (start_time - now).total_seconds() / 3600.0
 
     if hours_left >= 24:

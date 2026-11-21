@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
@@ -11,11 +12,11 @@ from database import get_db
 from models import User, UserRole
 
 # Secret key for JWT signing (for production, this can be moved to an environment variable)
-SECRET_KEY = "space-booking-secret-key-super-secure-2026"
+SECRET_KEY = os.getenv("SECRET_KEY", "space-booking-secret-key-super-secure-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode("utf-8")
@@ -41,7 +42,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
@@ -49,6 +50,8 @@ async def get_current_user(
         detail="Недействительный токен авторизации или срок действия истек",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if credentials is None:
+        raise credentials_exception
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
