@@ -20,11 +20,11 @@ async def init_db():
         # Безопасная миграция колонок для существующих таблиц
         migrations = [
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'Фотостудия';",
-            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS metro VARCHAR(100) DEFAULT 'м. Белорусская';",
-            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS address VARCHAR(200) DEFAULT 'Москва, ул. Лесная, 7';",
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS metro VARCHAR(100) DEFAULT 'Ленинский р-н';",
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS address VARCHAR(200) DEFAULT 'Ростов-на-Дону, ул. Большая Садовая, 47';",
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS area INTEGER DEFAULT 80;",
-            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rating FLOAT DEFAULT 4.9;",
-            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS reviews_count INTEGER DEFAULT 128;",
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS rating FLOAT DEFAULT 0.0;",
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS reviews_count INTEGER DEFAULT 0;",
             "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS studio_id INTEGER;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code_id INTEGER;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS discount_amount INTEGER DEFAULT 0;",
@@ -32,7 +32,10 @@ async def init_db():
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS additional_services TEXT;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS comment TEXT;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_name VARCHAR(100);",
-            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);"
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE;",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_reviews_booking_id ON reviews (booking_id) WHERE booking_id IS NOT NULL;"
         ]
         for mig in migrations:
             await conn.execute(text(mig))
