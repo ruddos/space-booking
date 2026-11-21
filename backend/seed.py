@@ -1,12 +1,13 @@
 import asyncio
 from datetime import time
-from sqlalchemy import select
+from sqlalchemy import select, func
 from database import async_session_maker, init_db
 from models import (
     Room, RoomAmenity, Schedule, Review, BlogPost, User, UserRole,
     Studio, Service, PromoCode, ServiceCategory
 )
 from auth import hash_password
+from main import recalc_room_rating
 
 # тестовый админ для входа в админку
 ADMIN_EMAIL = "admin@space.ru"
@@ -15,15 +16,16 @@ ADMIN_PASSWORD = "admin123"
 ROOMS_DATA = [
     {
         "name": "Moody",
+        "studio_name": "SPACE Artplay",
         "category": "Фотостудия",
-        "metro": "м. Белорусская",
-        "address": "Москва, ул. Лесная, 7",
+        "metro": "Ленинский р-н",
+        "address": "Ростов-на-Дону, ул. Большая Садовая, 47",
         "area": 80,
-        "rating": 4.9,
-        "reviews_count": 128,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 2500,
         "capacity": 10,
-        "image_url": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/moody.jpg",
         "description": "Moody — студия в стиле индустриального лофта: белая циклорама, бетонный пол и тёмные стены, которые не дают паразитных отражений. Подходит для портретов, fashion- и предметной съёмки, а также для видео. Есть гримёрная зона с зеркалом и светом, кухня и зона отдыха для команды.",
         "amenities": [
             "Белая циклорама 6 × 4 м",
@@ -49,21 +51,22 @@ ROOMS_DATA = [
             {
                 "author_name": "Ксения М.",
                 "rating": 4,
-                "text": "Отличная студия, но парковка во дворе быстро занимается — лучше приезжать на метро."
+                "text": "Отличная студия, но парковка во дворе быстро занимает — лучше приезжать на общественном транспорте."
             }
         ]
     },
     {
         "name": "Loft North",
+        "studio_name": "SPACE Artplay",
         "category": "Залы",
-        "metro": "м. Савёловская",
-        "address": "Москва, ул. Складочная, 1с1",
+        "metro": "Кировский р-н",
+        "address": "Ростов-на-Дону, пр. Будённовский, 49",
         "area": 95,
-        "rating": 4.8,
-        "reviews_count": 96,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 3200,
         "capacity": 15,
-        "image_url": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/loft-north.jpg",
         "description": "Интерьерный зал с панорамными окнами 4 м, фактурной кирпичной кладкой, винтажным кожаным диваном и теплым естественным светом. Отлично подходит для мастер-классов и съемок.",
         "amenities": [
             "Окна 4 м",
@@ -82,15 +85,16 @@ ROOMS_DATA = [
     },
     {
         "name": "White Box",
+        "studio_name": "SPACE Artplay",
         "category": "Фотостудия",
-        "metro": "м. Тульская",
-        "address": "Москва, Варшавское шоссе, 9",
+        "metro": "Кировский р-н",
+        "address": "Ростов-на-Дону, ул. Пушкинская, 36",
         "area": 65,
-        "rating": 4.8,
-        "reviews_count": 88,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 2200,
         "capacity": 8,
-        "image_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/white-box.jpg",
         "description": "Идеально белое минималистичное пространство с угловой циклорамой и максимальным количеством рассеянного дневного света.",
         "amenities": [
             "Циклорама 6 м",
@@ -102,15 +106,16 @@ ROOMS_DATA = [
     },
     {
         "name": "Noir",
+        "studio_name": "SPACE Artplay",
         "category": "Фотостудия",
-        "metro": "м. Таганская",
-        "address": "Москва, ул. Марксистская, 34",
+        "metro": "Кировский р-н",
+        "address": "Ростов-на-Дону, пр. Ворошиловский, 46",
         "area": 90,
-        "rating": 4.6,
-        "reviews_count": 51,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 2900,
         "capacity": 8,
-        "image_url": "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/noir.jpg",
         "description": "Темная студия с полной светоизоляцией, чёрным бархатным фоном, неоновой подсветкой и генератором дыма для атмосферных кадров.",
         "amenities": [
             "Циклорама",
@@ -122,15 +127,16 @@ ROOMS_DATA = [
     },
     {
         "name": "Violet Hall",
+        "studio_name": "SPACE Artplay",
         "category": "Залы",
-        "metro": "м. Курская",
-        "address": "Москва, ул. Нижняя Сыромятническая, 10",
+        "metro": "Ленинский р-н",
+        "address": "Ростов-на-Дону, ул. Социалистическая, 74",
         "area": 150,
-        "rating": 4.9,
-        "reviews_count": 74,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 4500,
         "capacity": 60,
-        "image_url": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/violet-hall.jpg",
         "description": "Большой многофункциональный зал со сценой, профессиональным звуковым оборудованием и регулируемым атмосферным светом. Идеален для мероприятий и лекций.",
         "amenities": [
             "Сцена",
@@ -143,15 +149,16 @@ ROOMS_DATA = [
     },
     {
         "name": "Grain",
+        "studio_name": "SPACE Flacon",
         "category": "Коворкинги",
-        "metro": "м. Бауманская",
-        "address": "Москва, ул. Бауманская, 15",
+        "metro": "Октябрьский р-н",
+        "address": "Ростов-на-Дону, пр. Михаила Нагибина, 32",
         "area": 110,
-        "rating": 4.7,
-        "reviews_count": 40,
+        "rating": 0.0,
+        "reviews_count": 0,
         "price_per_hour": 1800,
         "capacity": 24,
-        "image_url": "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/rooms/grain.jpg",
         "description": "Тихое и эстетичное пространство с деревянными столами, быстрым Wi-Fi, кофе-зоной и переговорными комнатами для продуктивной работы.",
         "amenities": [
             "24 рабочих места",
@@ -170,7 +177,7 @@ BLOG_POSTS_DATA = [
         "category": "Гайды",
         "read_time": "8 мин чтения · 20 октября 2026",
         "description": "Площадь, высота потолков, тип света, гримёрка и логистика — что проверить до того, как оплатить бронь.",
-        "image_url": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80",
+        "image_url": "/images/blog/1.jpg",
         "is_featured": True
     },
     {
@@ -178,7 +185,7 @@ BLOG_POSTS_DATA = [
         "category": "Свет",
         "read_time": "6 мин",
         "description": "Классика, high-key и контровой — что поставить и где, если в студии 3 источника.",
-        "image_url": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/2.jpg",
         "is_featured": False
     },
     {
@@ -186,7 +193,7 @@ BLOG_POSTS_DATA = [
         "category": "Мероприятия",
         "read_time": "5 мин",
         "description": "Посадка, звук, тайминг и что спросить у площадки заранее.",
-        "image_url": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/3.jpg",
         "is_featured": False
     },
     {
@@ -194,7 +201,7 @@ BLOG_POSTS_DATA = [
         "category": "Гайды",
         "read_time": "4 мин",
         "description": "Считаем на примере команды из пяти человек.",
-        "image_url": "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/4.jpg",
         "is_featured": False
     },
     {
@@ -202,7 +209,7 @@ BLOG_POSTS_DATA = [
         "category": "Свет",
         "read_time": "7 мин",
         "description": "Плюсы, минусы и как не потерять цвет одежды.",
-        "image_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/5.jpg",
         "is_featured": False
     },
     {
@@ -210,7 +217,7 @@ BLOG_POSTS_DATA = [
         "category": "Гайды",
         "read_time": "3 мин",
         "description": "Короткий список, который спасёт от лишней беготни.",
-        "image_url": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/6.jpg",
         "is_featured": False
     },
     {
@@ -218,47 +225,61 @@ BLOG_POSTS_DATA = [
         "category": "Владельцам",
         "read_time": "6 мин",
         "description": "Ракурсы, время суток и что убрать из кадра.",
-        "image_url": "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=800&q=80",
+        "image_url": "/images/blog/7.jpg",
         "is_featured": False
     }
 ]
+
+STUDIOS_DATA = {
+    "SPACE Artplay": {
+        "city": "Ростов-на-Дону",
+        "address": "Ростов-на-Дону, ул. Большая Садовая, 47",
+        "metro": "Ленинский р-н",
+        "phone": "+7 (863) 310-45-77",
+        "email": "artplay@space.ru",
+        "description": "Флагманский комплекс студий в центре Ростова-на-Дону: циклорамы, естественный свет и всё необходимое для съёмок."
+    },
+    "SPACE Flacon": {
+        "city": "Ростов-на-Дону",
+        "address": "Ростов-на-Дону, пр. Михаила Нагибина, 32",
+        "metro": "Октябрьский р-н",
+        "phone": "+7 (863) 310-45-88",
+        "email": "flacon@space.ru",
+        "description": "Креативные залы, коворкинг и лофты для работы и съёмок."
+    }
+}
 
 async def seed_database():
     await init_db()
     async with async_session_maker() as session:
         # 0. Студии (Studios)
-        studio_artplay = None
-        s_res = await session.execute(select(Studio).where(Studio.name == "SPACE Artplay"))
-        studio_artplay = s_res.scalar_one_or_none()
-        if not studio_artplay:
-            studio_artplay = Studio(
-                name="SPACE Artplay",
-                city="Москва",
-                address="Москва, ул. Нижняя Сыромятническая, 10, стр. 2",
-                metro="м. Чкаловская / Курская",
-                phone="+7 (495) 120-45-77",
-                email="artplay@space.ru",
-                description="Флагманский комплекс студий в арт-кластере Artplay: циклорамы, естественный свет и грузовой лифт."
-            )
-            session.add(studio_artplay)
-            await session.flush()
-            print("[OK] Добавлена студия: SPACE Artplay")
-
-        s_res2 = await session.execute(select(Studio).where(Studio.name == "SPACE Flacon"))
-        studio_flacon = s_res2.scalar_one_or_none()
-        if not studio_flacon:
-            studio_flacon = Studio(
-                name="SPACE Flacon",
-                city="Москва",
-                address="Москва, ул. Большая Новодмитровская, 36",
-                metro="м. Дмитровская",
-                phone="+7 (495) 120-45-88",
-                email="flacon@space.ru",
-                description="Креативные залы и лофты на дизайн-заводе Flacon с выходом на крышу."
-            )
-            session.add(studio_flacon)
-            await session.flush()
-            print("[OK] Добавлена студия: SPACE Flacon")
+        studios_map = {}
+        for s_name, s_info in STUDIOS_DATA.items():
+            s_res = await session.execute(select(Studio).where(Studio.name == s_name))
+            studio = s_res.scalar_one_or_none()
+            if not studio:
+                studio = Studio(
+                    name=s_name,
+                    city=s_info["city"],
+                    address=s_info["address"],
+                    metro=s_info["metro"],
+                    phone=s_info["phone"],
+                    email=s_info["email"],
+                    description=s_info["description"]
+                )
+                session.add(studio)
+                await session.flush()
+                print(f"[OK] Добавлена студия: {s_name}")
+            else:
+                studio.city = s_info["city"]
+                studio.address = s_info["address"]
+                studio.metro = s_info["metro"]
+                studio.phone = s_info["phone"]
+                studio.email = s_info["email"]
+                studio.description = s_info["description"]
+                await session.flush()
+                print(f"[OK] Обновлена студия: {s_name}")
+            studios_map[s_name] = studio
 
         # 0.1 Каталог платных услуг (Services)
         SERVICES_DATA = [
@@ -304,19 +325,47 @@ async def seed_database():
             result = await session.execute(query)
             existing_room = result.scalar_one_or_none()
 
+            target_studio = studios_map.get(data.get("studio_name"))
+            studio_id = target_studio.id if target_studio else None
+
             if existing_room:
-                print(f"[SKIP] Зал '{data['name']}' уже есть в базе данных.")
+                # Обновляем поля существующего зала (адрес, район, фото, студия)
+                existing_room.studio_id = studio_id
+                existing_room.category = data.get("category", "Фотостудия")
+                existing_room.metro = data.get("metro", "Ленинский р-н")
+                existing_room.address = data.get("address", "Ростов-на-Дону, ул. Большая Садовая, 47")
+                existing_room.area = data.get("area", 80)
+                existing_room.price_per_hour = data["price_per_hour"]
+                existing_room.capacity = data["capacity"]
+                existing_room.image_url = data["image_url"]
+                existing_room.description = data["description"]
+
+                # Проверяем и добавляем отзывы, если их нет
+                r_chk = await session.execute(select(Review).where(Review.room_id == existing_room.id))
+                curr_reviews = r_chk.scalars().all()
+                if not curr_reviews and data.get("reviews"):
+                    for rev in data["reviews"]:
+                        session.add(Review(
+                            room_id=existing_room.id,
+                            author_name=rev["author_name"],
+                            rating=rev["rating"],
+                            text=rev["text"]
+                        ))
+                await session.flush()
+                await session.commit()
+                await recalc_room_rating(session, existing_room.id)
+                print(f"[OK] Обновлен зал: {data['name']} ({data.get('category')}, {data.get('metro')})")
                 continue
 
             room = Room(
-                studio_id=studio_artplay.id if studio_artplay and "Flacon" not in data.get("address", "") else (studio_flacon.id if studio_flacon else None),
+                studio_id=studio_id,
                 name=data["name"],
                 category=data.get("category", "Фотостудия"),
-                metro=data.get("metro", "м. Белорусская"),
-                address=data.get("address", "Москва, ул. Лесная, 7"),
+                metro=data.get("metro", "Ленинский р-н"),
+                address=data.get("address", "Ростов-на-Дону, ул. Большая Садовая, 47"),
                 area=data.get("area", 80),
-                rating=data.get("rating", 4.9),
-                reviews_count=data.get("reviews_count", 128),
+                rating=0.0,
+                reviews_count=0,
                 description=data["description"],
                 price_per_hour=data["price_per_hour"],
                 capacity=data["capacity"],
@@ -346,13 +395,23 @@ async def seed_database():
                 )
 
             session.add(room)
+            await session.flush()
+            await session.commit()
+            await recalc_room_rating(session, room.id)
             print(f"[OK] Добавлен зал: {data['name']} ({data.get('category')}, {data.get('metro')})")
 
         # 2. Статьи блога
         for post_data in BLOG_POSTS_DATA:
             p_res = await session.execute(select(BlogPost).where(BlogPost.title == post_data["title"]))
-            if p_res.scalar_one_or_none():
+            existing_post = p_res.scalar_one_or_none()
+            if existing_post:
+                existing_post.image_url = post_data["image_url"]
+                existing_post.category = post_data["category"]
+                existing_post.read_time = post_data["read_time"]
+                existing_post.description = post_data["description"]
+                existing_post.is_featured = post_data["is_featured"]
                 continue
+
             post = BlogPost(
                 title=post_data["title"],
                 category=post_data["category"],
@@ -376,7 +435,7 @@ async def seed_database():
             print(f"[OK] Добавлен администратор: {ADMIN_EMAIL}")
 
         await session.commit()
-        print("\nБаза успешно наполнена данными из макетов Figma (залы, отзывы, статьи блога).")
+        print("\nБаза успешно наполнена данными (Ростов-на-Дону, реальные рейтинги, локальные изображения).")
 
 if __name__ == "__main__":
     asyncio.run(seed_database())
