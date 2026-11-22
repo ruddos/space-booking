@@ -1,3 +1,5 @@
+import { LOCATIONS } from './locations.js'
+
 // подписи для карточек залов, в апи таких полей нет — собираем из имеющихся
 
 export const CATEGORIES = [
@@ -90,9 +92,29 @@ export function sortRooms(list, key) {
   )
 }
 
-// Координаты центра Ростова-на-Дону: долгота, широта.
-const ROSTOV = 'll=39.7187%2C47.2221&sspn=0.2%2C0.12&rl=1'
 const withCity = (address = '') => (address.includes('Ростов-на-Дону') ? address : `Ростов-на-Дону, ${address}`)
 
-export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?${ROSTOV}&text=${encodeURIComponent(withCity(address))}`
-export const routeUrl = (address) => `https://yandex.ru/maps/?rtext=~${encodeURIComponent(withCity(address))}`
+export function mapUrl(address) {
+  const fullAddress = withCity(address).trim()
+  const point = LOCATIONS[fullAddress]
+  const params = new URLSearchParams({ lang: 'ru_RU' })
+  if (point) {
+    const position = point.join(',')
+    params.set('ll', position)
+    params.set('z', '17')
+    params.set('pt', `${position},pm2rdm`)
+  } else {
+    // Новый адрес ищем целиком, не фиксируя карту на центре города.
+    params.set('mode', 'search')
+    params.set('text', fullAddress)
+  }
+  return `https://yandex.ru/map-widget/v1/?${params}`
+}
+
+export function routeUrl(address) {
+  const fullAddress = withCity(address).trim()
+  const point = LOCATIONS[fullAddress]
+  // В маршрутах Яндекса порядок обратный: широта, долгота.
+  const destination = point ? `${point[1]},${point[0]}` : fullAddress
+  return `https://yandex.ru/maps/?rtext=~${encodeURIComponent(destination)}`
+}
