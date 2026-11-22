@@ -85,8 +85,8 @@ export default function Booking() {
 
   // итоговую цену (выходные, скидка за длительность, услуги, промокод) считает бэкенд
   useEffect(() => {
+    setPrice(null)
     if (!start) {
-      setPrice(null)
       return
     }
     let ignore = false
@@ -111,7 +111,12 @@ export default function Booking() {
   }, [roomId, date, start, end, serviceIds, promo])
 
   async function submit() {
+    if (sending) return
     setError('')
+    if (slotsLoading || !price || !start) {
+      setError('Дождись загрузки расписания и выбери свободное время')
+      return
+    }
     if (!contact.name.trim() || !contact.phone.trim()) {
       setError('Укажи имя и телефон — по ним студия свяжется с тобой')
       return

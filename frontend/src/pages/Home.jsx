@@ -10,6 +10,7 @@ import { QUICK_FILTERS } from '../components/home/SearchBar.jsx'
 import { api } from '../utils/api.js'
 import { useFavorites } from '../utils/useFavorites.js'
 import { isoDate } from '../utils/format.js'
+import { hasFeature } from '../utils/rooms.js'
 
 const emptyFilters = () => ({ category: '', time: '', date: isoDate() })
 
@@ -51,8 +52,7 @@ export default function Home() {
   const params = useMemo(() => {
     const p = { category: applied.category, date: applied.date }
     QUICK_FILTERS.filter((f) => quick.includes(f.key)).forEach((f) => {
-      if (f.params.search) p.search = [p.search, f.params.search].filter(Boolean).join(' ')
-      else Object.assign(p, f.params)
+      if (!f.params.search) Object.assign(p, f.params)
     })
     return p
   }, [applied.category, applied.date, quick])
@@ -62,7 +62,13 @@ export default function Home() {
     setLoading(true)
     setError('')
     api('/rooms', { params })
-      .then((data) => {
+      .then(async (data) => {
+        // Каталог отдаёт только четыре первых окна. Для фильтра по времени
+        // берём полный день, иначе вечер скрывается за утренними слотами.
+        if (applied.time) data = await Promise.all(data.map(async (room) => {
+          const day = await api(`/rooms/${room.id}/available-slots`, { params: { date: applied.date } })
+          return { ...room, today_available_slots: day.slots.filter((s) => s.is_available).map((s) => s.time) }
+        }))
         if (!ignore) setRooms(data)
       })
       .catch((e) => {
@@ -74,14 +80,21 @@ export default function Home() {
     return () => {
       ignore = true
     }
-  }, [params])
+  }, [params, applied.time, applied.date])
 
   const visibleRooms = useMemo(() => {
-    const list = rooms.filter((r) => inTimeRange(r, applied.time))
+    const features = quick.filter((key) => ['cyclorama', 'daylight', 'makeup'].includes(key))
+    const list = rooms.filter((r) => inTimeRange(r, applied.time) && features.every((key) => hasFeature(r, key))).map((r) => ({
+      ...r,
+      today_available_slots: applied.time ? r.today_available_slots.filter((t) => {
+        const [from, to] = TIME_RANGES[applied.time]
+        return parseInt(t, 10) >= from && parseInt(t, 10) < to
+      }) : r.today_available_slots,
+    }))
     if (filtered) return list
     // без фильтров — 4 зала, сначала те, где есть свободные окна
     return [...list].sort((a, b) => b.today_available_slots.length - a.today_available_slots.length).slice(0, 4)
-  }, [rooms, applied.time, filtered])
+  }, [rooms, applied.time, filtered, quick])
 
   // в hero показываем зал, у которого есть свободные окна сегодня
   const featured = allRooms.find((r) => r.today_available_slots.length) || allRooms[0]

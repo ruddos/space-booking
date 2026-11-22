@@ -26,8 +26,14 @@ export function DayPicker({ value, onChange }) {
     <div>
       <div className="flex items-center justify-between">
         <h2 className="text-[20px] font-extrabold">Дата</h2>
-        <span className="text-[15px] font-bold capitalize">{month.replace(' г.', '')}</span>
+        <label className="text-[15px] font-bold">
+          <span className="sr-only">Дата бронирования</span>
+          <input type="date" aria-label="Дата бронирования" value={value} min={isoDate()}
+            onChange={(e) => e.target.value && onChange(e.target.value)}
+            className="rounded-lg border border-line bg-white p-2" />
+        </label>
       </div>
+      <p className="mt-2 text-[14px] capitalize text-muted">{month.replace(' г.', '')}</p>
       <div className="-mx-1 mt-4 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
         {days.map((d) => {
           const iso = isoDate(d)
