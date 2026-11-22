@@ -1,4 +1,5 @@
 import { CATEGORIES } from '../../utils/rooms.js'
+import { isoDate } from '../../utils/format.js'
 import { CalendarIcon, ChevronDownIcon, ClockIcon, FilterIcon, PinIcon, SearchIcon } from '../Icons.jsx'
 
 export const TIME_OPTIONS = [
@@ -13,7 +14,7 @@ export const QUICK_FILTERS = [
   { key: 'daylight', label: 'Дневной свет', params: { search: 'дневн' } },
   { key: 'makeup', label: 'Гримёрка', params: { search: 'гримёр' } },
   { key: 'cheap', label: 'До 3 000 ₽/час', params: { max_price: 3000 } },
-  { key: 'free', label: 'Свободно сегодня', params: { only_available_today: true } },
+  { key: 'free', label: 'Есть свободное время', params: { only_available_today: true } },
 ]
 
 function Field({ icon, label, children, divider = true }) {
@@ -52,8 +53,6 @@ function Select({ value, onChange, options }) {
 }
 
 export default function SearchBar({ filters, onChange, onSubmit }) {
-  const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')
-
   function submit(e) {
     e.preventDefault()
     onSubmit()
@@ -65,10 +64,12 @@ export default function SearchBar({ filters, onChange, onSubmit }) {
       className="grid grid-cols-1 gap-1 rounded-[22px] bg-white p-[10px] text-ink sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_246px] lg:gap-0"
     >
       <Field icon={<PinIcon size={22} />} label="Город" divider={false}>
-        <Select value="msk" onChange={() => {}} options={[{ value: 'msk', label: 'Москва' }]} />
+        <span className="block text-[15px] font-bold">Ростов-на-Дону</span>
       </Field>
       <Field icon={<CalendarIcon size={22} />} label="Дата">
-        <span className="block text-[15px] font-bold">Сегодня, {today}</span>
+        <input type="date" aria-label="Дата поиска" required min={isoDate()} value={filters.date}
+          onChange={(e) => onChange({ ...filters, date: e.target.value })}
+          className="block w-full min-w-0 bg-transparent text-[15px] font-bold outline-none" />
       </Field>
       <Field icon={<ClockIcon size={22} />} label="Время">
         <Select value={filters.time} onChange={(time) => onChange({ ...filters, time })} options={TIME_OPTIONS} />

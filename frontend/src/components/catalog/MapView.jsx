@@ -5,7 +5,7 @@ import { mapUrl } from '../../utils/rooms.js'
 import { StarIcon } from '../Icons.jsx'
 
 // вид «На карте»: список слева, карта Яндекса по адресу выбранной площадки
-export default function MapView({ rooms }) {
+export default function MapView({ rooms, date }) {
   const [activeId, setActiveId] = useState(null)
   const active = rooms.find((r) => r.id === activeId) || rooms[0]
 
@@ -29,7 +29,7 @@ export default function MapView({ rooms }) {
                   <span className="truncate text-[16px] font-extrabold">{r.name}</span>
                   <span className="flex items-center gap-0.5 text-[13px] font-bold">
                     <StarIcon size={12} className="text-star" />
-                    {r.rating}
+                    {r.reviews_count ? r.rating : 'Нет оценок'}
                   </span>
                 </span>
                 <span className="block truncate text-[13px] text-muted">{r.address}</span>
@@ -51,7 +51,7 @@ export default function MapView({ rooms }) {
           loading="lazy"
         />
         <Link
-          to={`/rooms/${active.id}`}
+          to={`/rooms/${active.id}${date ? `?date=${date}` : ''}`}
           className="absolute right-4 bottom-4 rounded-xl bg-accent px-4 py-2.5 text-[14px] font-bold text-white shadow-lg hover:bg-accent-hover"
         >
           {active.name} — подробнее →

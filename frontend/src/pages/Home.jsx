@@ -9,8 +9,9 @@ import Reviews from '../components/home/Reviews.jsx'
 import { QUICK_FILTERS } from '../components/home/SearchBar.jsx'
 import { api } from '../utils/api.js'
 import { useFavorites } from '../utils/useFavorites.js'
+import { isoDate } from '../utils/format.js'
 
-const EMPTY_FILTERS = { category: '', time: '' }
+const emptyFilters = () => ({ category: '', time: '', date: isoDate() })
 
 // границы для фильтра "Время" (часы начала слота)
 const TIME_RANGES = {
@@ -35,12 +36,12 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [applied, setApplied] = useState(EMPTY_FILTERS)
+  const [filters, setFilters] = useState(emptyFilters)
+  const [applied, setApplied] = useState(emptyFilters)
   const [quick, setQuick] = useState([])
   const { favorites, toggleFavorite } = useFavorites()
 
-  const filtered = Boolean(applied.category || applied.time || quick.length)
+  const filtered = Boolean(applied.category || applied.time || quick.length || applied.date !== isoDate())
 
   useEffect(() => {
     api('/rooms').then(setAllRooms).catch(() => setAllRooms([]))
@@ -48,10 +49,13 @@ export default function Home() {
 
   // параметры запроса: категория + быстрые фильтры-чипсы
   const params = useMemo(() => {
-    const p = { category: applied.category }
-    QUICK_FILTERS.filter((f) => quick.includes(f.key)).forEach((f) => Object.assign(p, f.params))
+    const p = { category: applied.category, date: applied.date }
+    QUICK_FILTERS.filter((f) => quick.includes(f.key)).forEach((f) => {
+      if (f.params.search) p.search = [p.search, f.params.search].filter(Boolean).join(' ')
+      else Object.assign(p, f.params)
+    })
     return p
-  }, [applied.category, quick])
+  }, [applied.category, applied.date, quick])
 
   useEffect(() => {
     let ignore = false
@@ -103,14 +107,15 @@ export default function Home() {
   }
 
   function reset() {
-    setFilters(EMPTY_FILTERS)
-    setApplied(EMPTY_FILTERS)
+    setFilters(emptyFilters())
+    setApplied(emptyFilters())
     setQuick([])
   }
 
   return (
     <>
       <Hero
+        rooms={allRooms}
         featured={featured}
         filters={filters}
         onFiltersChange={setFilters}
@@ -121,6 +126,7 @@ export default function Home() {
       <main>
         <Categories rooms={allRooms} onSelect={selectCategory} />
         <FreeToday
+          date={applied.date}
           rooms={visibleRooms}
           loading={loading}
           error={error}

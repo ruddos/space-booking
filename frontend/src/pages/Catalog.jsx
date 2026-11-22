@@ -7,7 +7,7 @@ import { ChevronDownIcon, FilterIcon } from '../components/Icons.jsx'
 import PageLayout from '../components/PageLayout.jsx'
 import RoomCard from '../components/RoomCard.jsx'
 import { api } from '../utils/api.js'
-import { plural } from '../utils/format.js'
+import { isoDate, plural } from '../utils/format.js'
 import { AREA_OPTIONS, CATEGORIES, FEATURES, SORTS, hasFeature, sortRooms } from '../utils/rooms.js'
 import { useFavorites } from '../utils/useFavorites.js'
 
@@ -45,6 +45,7 @@ function useDebounced(value, delay = 400) {
 export default function Catalog() {
   const [params, setParams] = useSearchParams()
   const category = params.get('category') || ''
+  const date = params.get('date') || isoDate()
 
   const [filters, setFilters] = useState(() => fromParams(params))
   const [sort, setSort] = useState('rec')
@@ -68,6 +69,7 @@ export default function Catalog() {
     api('/rooms', {
       params: {
         category,
+        date,
         min_price: priceFrom > PRICE_MIN ? priceFrom : undefined,
         max_price: priceTo < PRICE_MAX ? priceTo : undefined,
         only_available_today: filters.freeToday || undefined,
@@ -79,7 +81,7 @@ export default function Catalog() {
     return () => {
       ignore = true
     }
-  }, [category, priceFrom, priceTo, filters.freeToday])
+  }, [category, date, priceFrom, priceTo, filters.freeToday])
 
   const result = useMemo(() => {
     const metro = filters.metro.trim().toLowerCase()
@@ -130,7 +132,7 @@ export default function Catalog() {
       : []),
   ]
 
-  const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+  const today = new Date(date + 'T00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
 
   return (
     <PageLayout>
@@ -141,11 +143,16 @@ export default function Catalog() {
           <div>
             <h1 className="h2">Площадки в Москве</h1>
             <p className="mt-1.5 text-[16px] text-muted">
-              Найдено {result.length} {plural(result.length, ['площадка', 'площадки', 'площадок'])} · сегодня, {today}
+              Найдено {result.length} {plural(result.length, ['площадка', 'площадки', 'площадок'])} · {today}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2.5">
+            <label className="flex h-[46px] items-center gap-2 rounded-xl border border-line bg-white px-3 text-[15px]">
+              Дата
+              <input type="date" aria-label="Дата в каталоге" min={isoDate()} value={date}
+                onChange={(e) => { if (e.target.value) { const next = new URLSearchParams(params); next.set('date', e.target.value); setParams(next, { replace: true }) } }} />
+            </label>
             <label className="relative flex h-[46px] items-center rounded-xl border border-line bg-white pr-9 pl-4 text-[15px]">
               <span className="text-muted">Сортировка:</span>
               <select
@@ -251,7 +258,7 @@ export default function Catalog() {
                 ))}
               </div>
             ) : view === 'map' ? (
-              <MapView rooms={result} />
+              <MapView rooms={result} date={date} />
             ) : (
               <>
                 <div className={`grid gap-5 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${loading ? 'opacity-60' : ''}`}>
@@ -259,6 +266,7 @@ export default function Catalog() {
                     <RoomCard
                       key={room.id}
                       room={room}
+                      date={date}
                       catalog
                       favorite={favorites.includes(room.id)}
                       onFavorite={toggleFavorite}

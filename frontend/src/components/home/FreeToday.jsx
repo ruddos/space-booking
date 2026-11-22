@@ -6,7 +6,7 @@ function Skeleton() {
   return <div className="h-[365px] animate-pulse rounded-[22px] border border-line bg-white" />
 }
 
-export default function FreeToday({ rooms, loading, error, filtered, onReset, favorites, onFavorite }) {
+export default function FreeToday({ rooms, loading, error, filtered, onReset, favorites, onFavorite, date }) {
   return (
     <section id="free-today" className="container-x scroll-mt-6 pt-[88px]">
       <SectionHead
@@ -14,7 +14,7 @@ export default function FreeToday({ rooms, loading, error, filtered, onReset, fa
         text={
           filtered
             ? `Нашли площадок: ${rooms.length}`
-            : 'Ближайшие окна в студиях Москвы — бронь без звонков и переписок'
+            : 'Свободные пространства Ростова-на-Дону — выбирай дату и бронируй'
         }
         action={
           filtered ? (
@@ -39,7 +39,7 @@ export default function FreeToday({ rooms, loading, error, filtered, onReset, fa
         {loading
           ? [1, 2, 3, 4].map((i) => <Skeleton key={i} />)
           : rooms.map((room) => (
-              <RoomCard key={room.id} room={room} favorite={favorites.includes(room.id)} onFavorite={onFavorite} />
+              <RoomCard key={room.id} room={room} date={date} favorite={favorites.includes(room.id)} onFavorite={onFavorite} />
             ))}
       </div>
 

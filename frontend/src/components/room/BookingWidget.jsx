@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api.js'
 import { formatPrice, isoDate } from '../../utils/format.js'
 import { CalendarIcon } from '../Icons.jsx'
@@ -7,7 +7,9 @@ import { CalendarIcon } from '../Icons.jsx'
 // боковая карточка на странице студии: дата, свободные часы, кнопка брони
 export default function BookingWidget({ room }) {
   const navigate = useNavigate()
-  const [date, setDate] = useState(isoDate())
+  const [params] = useSearchParams()
+  const initial = params.get('date')
+  const [date, setDate] = useState(initial && /^\d{4}-\d{2}-\d{2}$/.test(initial) && initial >= isoDate() ? initial : isoDate())
   const [data, setData] = useState(null)
   const [time, setTime] = useState('')
   const [loading, setLoading] = useState(true)

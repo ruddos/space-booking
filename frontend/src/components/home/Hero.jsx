@@ -1,15 +1,9 @@
 import { Link } from 'react-router-dom'
-import { formatPrice } from '../../utils/format.js'
+import { formatPrice, plural } from '../../utils/format.js'
 import { categorySingular } from '../../utils/rooms.js'
 import { StarIcon } from '../Icons.jsx'
 import Header from '../Header.jsx'
 import SearchBar, { QUICK_FILTERS } from './SearchBar.jsx'
-
-const STATS = [
-  ['500+', 'площадок'],
-  ['20 000+', 'довольных клиентов'],
-  ['4.9', 'средний рейтинг'],
-]
 
 function FeaturedRoom({ room }) {
   return (
@@ -20,7 +14,7 @@ function FeaturedRoom({ room }) {
         <>
           <div className="absolute top-5 right-5 flex items-center gap-1.5 rounded-[18px] bg-dark/70 px-3 py-2 text-[14px] font-bold text-white backdrop-blur">
             <StarIcon size={16} className="text-[#ffc53d]" />
-            {room.rating} · {room.reviews_count} отзывов
+            {room.reviews_count ? `${Number(room.rating).toLocaleString('ru-RU')} · ${room.reviews_count} ${plural(room.reviews_count, ['отзыв', 'отзыва', 'отзывов'])}` : 'Пока нет оценок'}
           </div>
 
           <Link
@@ -56,7 +50,10 @@ function FeaturedRoom({ room }) {
   )
 }
 
-export default function Hero({ featured, filters, onFiltersChange, onSearch, quick, onQuickToggle }) {
+export default function Hero({ featured, rooms = [], filters, onFiltersChange, onSearch, quick, onQuickToggle }) {
+  const count = rooms.reduce((sum, r) => sum + r.reviews_count, 0)
+  const average = count ? (rooms.reduce((sum, r) => sum + r.rating * r.reviews_count, 0) / count).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : '—'
+  const stats = [[rooms.length, 'площадок'], [count, 'отзывов'], [average, 'средний рейтинг']]
   return (
     <section className="bg-dark text-white">
       <Header dark />
@@ -79,10 +76,10 @@ export default function Hero({ featured, filters, onFiltersChange, onSearch, qui
             </p>
 
             <dl className="mt-11 grid grid-cols-3 sm:flex">
-              {STATS.map(([value, label], i) => (
+              {stats.map(([value, label], i) => (
                 <div
                   key={label}
-                  className={`${i ? 'border-l border-[#2a2a36] pl-4 sm:pl-10' : ''} ${i < STATS.length - 1 ? 'pr-4 sm:pr-10' : ''}`}
+                  className={`${i ? 'border-l border-[#2a2a36] pl-4 sm:pl-10' : ''} ${i < stats.length - 1 ? 'pr-4 sm:pr-10' : ''}`}
                 >
                   <dt className="text-[22px] leading-[1.35] font-extrabold sm:text-[28px]">{value}</dt>
                   <dd className="text-[14px] text-on-dark-muted">{label}</dd>
