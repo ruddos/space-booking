@@ -179,7 +179,6 @@ export default function Room() {
                   ],
                   ['Бесплатная отмена', 'Не позднее чем за 24 часа до начала, за 6–24 часа вернём 50%'],
                   ['Сменная обувь', 'На циклораму — только в бахилах или носках'],
-                  ['Тех. перерыв', '15 минут между бронями на уборку'],
                 ].map(([title, text]) => (
                   <div key={title} className="rounded-[14px] border border-line p-[17px]">
                     <div className="text-[15px] font-bold">{title}</div>
@@ -194,7 +193,7 @@ export default function Room() {
                 <iframe title="Карта" src={mapUrl(room.address)} loading="lazy" className="absolute inset-0 size-full" />
               </div>
               <p className="mt-4 text-[15px] leading-relaxed text-[#2a2a36]">
-                {room.address}, {room.metro}. Точный вход и код домофона пришлём в напоминании за 2 часа до начала.
+                {room.address}, {room.metro}. Уточнить вход и условия посещения можно через форму на странице «Контакты».
               </p>
             </Card>
 

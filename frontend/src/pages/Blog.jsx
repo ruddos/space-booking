@@ -99,7 +99,7 @@ export default function Blog() {
         </div>
 
         {featured && (
-          <article className="mt-8 grid overflow-hidden rounded-[28px] bg-dark text-white md:grid-cols-[700px_1fr]">
+          <article className="mt-8 grid overflow-hidden rounded-[28px] bg-dark text-white md:grid-cols-2 xl:grid-cols-[1.1fr_1fr]">
             <img src={featured.image_url} alt="" className="h-[260px] w-full object-cover md:h-[400px]" />
             <div className="flex flex-col justify-center p-8 md:p-10">
               <span className="self-start rounded-[15px] bg-accent px-3 py-1.5 text-[13px] font-bold">

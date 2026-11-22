@@ -26,7 +26,6 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '', full_name: '', phone: '' })
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
-  const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
 
   // уже вошли — нечего тут делать
@@ -53,7 +52,6 @@ export default function Login() {
 
   function switchTab(register) {
     setError('')
-    setNote('')
     setParams(register ? { register: '1' } : {}, { replace: true, state: location.state })
   }
 
@@ -144,17 +142,15 @@ export default function Login() {
                   </span>
                   Запомнить меня
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setNote('Восстановление пароля скоро появится. Пока напиши нам через форму на странице «Контакты».')}
+                <Link
+                  to="/contacts#write"
                   className="text-[14px] font-bold text-accent hover:underline"
                 >
-                  Забыли пароль?
-                </button>
+                  Помощь со входом
+                </Link>
               </div>
             )}
 
-            {note && <p className="rounded-xl bg-accent-light px-4 py-3 text-[14px] font-semibold text-accent-hover">{note}</p>}
             {error && <p className="rounded-xl bg-danger-light px-4 py-3 text-[14px] font-semibold text-danger">{error}</p>}
 
             <button

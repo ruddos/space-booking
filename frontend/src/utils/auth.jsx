@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
   }
 
   async function register(form) {
-    const data = await api('/auth/register', { method: 'POST', body: form })
+    const data = await api('/auth/register', { method: 'POST', body: { ...form, email: form.email.trim().toLowerCase(), full_name: form.full_name.trim() } })
     setToken(data.access_token)
     setUser(data.user)
     return data.user

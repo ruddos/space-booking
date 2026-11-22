@@ -9,7 +9,7 @@ import { formatPrice, formatTime } from '../utils/format.js'
 import { categorySingular, routeUrl } from '../utils/rooms.js'
 
 const NEXT = [
-  'За 2 часа до начала пришлём напоминание и код от домофона.',
+  'Детали бронирования и уведомления доступны в личном кабинете.',
   'Приходи за 10 минут — администратор покажет студию и свет.',
   'Отменить бесплатно можно не позднее чем за 24 часа до начала — в личном кабинете.',
 ]
@@ -59,7 +59,7 @@ export default function BookingDone() {
           </span>
           <h1 className="h2 mt-4">Бронь подтверждена</h1>
           <p className="mt-4 text-[17px] leading-relaxed text-muted">
-            Мы отправили подтверждение и чек на почту. Номер брони —{' '}
+            Подтверждение и чек сохранены в личном кабинете. Номер брони —{' '}
             <b className="text-ink">{booking?.booking_number || '…'}</b>
           </p>
         </div>

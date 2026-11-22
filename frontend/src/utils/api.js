@@ -34,11 +34,16 @@ export async function api(path, { method = 'GET', body, params } = {}) {
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new ApiError('Не удалось связаться с сервером. Проверь подключение и попробуй ещё раз.', 0)
+  }
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {

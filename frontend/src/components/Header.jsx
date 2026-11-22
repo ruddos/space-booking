@@ -61,8 +61,8 @@ export default function Header({ dark = false }) {
                 <HeartIcon size={22} />
               </Link>
               <Link
-                to="/account"
-                title={`${user.full_name} — личный кабинет`}
+                to={isAdmin ? '/admin' : '/account'}
+                title={`${user.full_name} — ${isAdmin ? 'админ-панель' : 'личный кабинет'}`}
                 className={`grid size-11 place-items-center rounded-full text-[16px] font-extrabold ${
                   dark ? 'bg-accent text-white' : 'bg-accent-light text-accent-hover'
                 }`}

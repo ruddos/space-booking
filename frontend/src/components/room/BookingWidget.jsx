@@ -103,7 +103,7 @@ export default function BookingWidget({ room }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-bold">Администратор студии</span>
-          <span className="block text-[13px] text-muted">Отвечает за ~15 минут</span>
+          <span className="block text-[13px] text-muted">Вопросы о посещении</span>
         </span>
         <Link to="/contacts#write" className="text-[14px] font-bold text-accent hover:underline">
           Написать

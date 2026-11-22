@@ -60,7 +60,7 @@ export default function Payments() {
                   <td className="px-3 py-4 text-right font-extrabold whitespace-nowrap">{formatPrice(b.total_price)}</td>
                   <td className="px-3 py-4">
                     <span className={`rounded-[14px] px-2.5 py-1 text-[13px] font-bold whitespace-nowrap ${st.cls}`}>
-                      {b.status === 'cancelled' ? 'Возврат' : st.label}
+                      {st.label}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
