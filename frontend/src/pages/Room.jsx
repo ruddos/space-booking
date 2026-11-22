@@ -114,7 +114,7 @@ export default function Room() {
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px]">
               <span className="flex items-center gap-1.5">
                 <StarIcon size={16} className="text-star" />
-                <b>{room.rating}</b>
+                <b>{room.reviews_count ? Number(room.rating).toLocaleString('ru-RU') : 'Нет оценок'}</b>
                 <a href="#reviews" className="font-semibold text-accent hover:underline">
                   {room.reviews_count} {plural(room.reviews_count, ['отзыв', 'отзыва', 'отзывов'])}
                 </a>
@@ -204,7 +204,7 @@ export default function Room() {
               action={
                 <span className="flex items-center gap-2">
                   <StarIcon size={24} className="text-star" />
-                  <span className="text-[28px] font-extrabold">{room.rating}</span>
+                  <span className="text-[28px] font-extrabold">{room.reviews_count ? Number(room.rating).toLocaleString('ru-RU') : '—'}</span>
                   <span className="text-[15px] font-semibold text-muted">
                     · {room.reviews_count} {plural(room.reviews_count, ['отзыв', 'отзыва', 'отзывов'])}
                   </span>
@@ -212,6 +212,7 @@ export default function Room() {
               }
             >
               {reviews.length === 0 && <p className="text-muted">Отзывов пока нет — будь первым после брони.</p>}
+              <p className="mb-4 text-[14px] text-muted">Оставить отзыв можно в разделе «Прошедшие» личного кабинета после посещения. <Link to="/account" className="font-bold text-accent">Мои бронирования</Link></p>
               <ul className="divide-y divide-line-soft">
                 {(allReviews ? reviews : reviews.slice(0, REVIEWS_SHOWN)).map((r) => (
                   <li key={r.id} className="py-5 first:pt-0">
@@ -221,6 +222,7 @@ export default function Room() {
                       </span>
                       <span>
                         <span className="block text-[16px] font-bold">{r.author_name}</span>
+                        <span className="block text-[13px] text-muted">{r.booking_id ? 'После посещения' : 'Демонстрационный отзыв'}</span>
                         <span className="block text-[13px] text-muted">
                           {formatDate(r.created_at, { day: 'numeric', month: 'long', year: 'numeric' })} · ★ {r.rating}
                         </span>

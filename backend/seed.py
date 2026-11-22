@@ -1,6 +1,6 @@
 import asyncio
 from datetime import time
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from database import async_session_maker, init_db
 from models import (
     Room, RoomAmenity, Schedule, Review, BlogPost, User, UserRole,
@@ -37,23 +37,7 @@ ROOMS_DATA = [
             "Кухня и чай/кофе",
             "Отопление и кондиционер"
         ],
-        "reviews": [
-            {
-                "author_name": "Ольга П.",
-                "rating": 5,
-                "text": "Снимали лукбук — циклорама чистая, свет мощный, администратор помог выставить схему. Вернёмся."
-            },
-            {
-                "author_name": "Илья Р.",
-                "rating": 5,
-                "text": "Удобно, что всё оплатил заранее на сайте и просто пришёл. Гримёрка тёплая, есть утюг и отпариватель."
-            },
-            {
-                "author_name": "Ксения М.",
-                "rating": 4,
-                "text": "Отличная студия, но парковка во дворе быстро занимает — лучше приезжать на общественном транспорте."
-            }
-        ]
+        "reviews": []
     },
     {
         "name": "Loft North",
@@ -75,13 +59,7 @@ ROOMS_DATA = [
             "Бумажные фоны",
             "Bluetooth-колонка Marshall"
         ],
-        "reviews": [
-            {
-                "author_name": "Дмитрий С.",
-                "rating": 5,
-                "text": "Бронируем залы под мастер-классы каждый месяц. Удобно, что все брони и чеки лежат в одном кабинете."
-            }
-        ]
+        "reviews": []
     },
     {
         "name": "White Box",
@@ -252,6 +230,15 @@ STUDIOS_DATA = {
 async def seed_database():
     await init_db()
     async with async_session_maker() as session:
+        # Удаляем только старые демонстрационные отзывы из сида.
+        # Все отзывы с привязкой к клиенту или брони сохраняются.
+        demo_rooms = select(Room.id).where(Room.name.in_(["Moody", "Loft North"]))
+        await session.execute(delete(Review).where(
+            Review.room_id.in_(demo_rooms),
+            Review.user_id.is_(None),
+            Review.booking_id.is_(None),
+            Review.author_name.in_(["Ольга П.", "Илья Р.", "Ксения М.", "Дмитрий С."])
+        ))
         # 0. Студии (Studios)
         studios_map = {}
         for s_name, s_info in STUDIOS_DATA.items():

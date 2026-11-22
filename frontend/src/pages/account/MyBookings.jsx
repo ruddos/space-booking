@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Fragment } from 'react'
+import ReviewForm from '../../components/account/ReviewForm.jsx'
 import PageTitle from '../../components/admin/PageTitle.jsx'
 import { api } from '../../utils/api.js'
 import { CLIENT_STATUS, bookingTab, refundInfo } from '../../utils/bookings.js'
@@ -18,7 +20,7 @@ const dark = `${btn} bg-ink text-white hover:bg-[#2a2a36]`
 const light = `${btn} border border-line bg-white hover:bg-bg`
 const danger = `${btn} border border-line bg-white text-danger hover:bg-danger-light`
 
-function BookingItem({ b, busy, onCancel, onPay }) {
+function BookingItem({ b, busy, onCancel, onPay, onReview }) {
   const tab = bookingTab(b)
   const status = CLIENT_STATUS[b.status]
   const room = b.room
@@ -41,6 +43,10 @@ function BookingItem({ b, busy, onCancel, onPay }) {
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
+        {tab === 'past' && b.status === 'confirmed' && !b.has_review && (
+          <button type="button" onClick={() => onReview(b.id)} className={dark}>Оставить отзыв</button>
+        )}
+        {b.has_review && <span className="self-center text-[14px] font-bold text-success">Отзыв опубликован</span>}
         {tab === 'upcoming' && b.status === 'pending' && (
           <button type="button" disabled={busy} onClick={() => onPay(b)} className={dark}>
             Оплатить
@@ -77,6 +83,8 @@ export default function MyBookings() {
   const [error, setError] = useState('')
   const [tab, setTab] = useState('upcoming')
   const [busyId, setBusyId] = useState(null)
+  const [reviewId, setReviewId] = useState(null)
+  const [notice, setNotice] = useState('')
   const [favRooms, setFavRooms] = useState([])
   const { favorites } = useFavorites()
 
@@ -160,11 +168,19 @@ export default function MyBookings() {
       </div>
 
       {error && <p className="mt-4 rounded-2xl bg-danger-light px-5 py-4 font-semibold text-danger">{error}</p>}
+      {notice && <p role="status" className="mt-4 rounded-2xl bg-success-light p-4 text-success">{notice}</p>}
 
       <div className="mt-6 space-y-4">
         {loading && <div className="h-[170px] animate-pulse rounded-[22px] border border-line bg-white" />}
         {list.map((b) => (
-          <BookingItem key={b.id} b={b} busy={busyId === b.id} onCancel={cancel} onPay={pay} />
+          <Fragment key={b.id}>
+            <BookingItem b={b} busy={busyId === b.id} onCancel={cancel} onPay={pay} onReview={setReviewId} />
+            {reviewId === b.id && <ReviewForm booking={b} onClose={() => setReviewId(null)} onSaved={(id) => {
+              setBookings((list) => list.map((item) => item.id === id ? { ...item, has_review: true } : item))
+              setReviewId(null)
+              setNotice('Спасибо! Отзыв опубликован, оценка площадки обновлена.')
+            }} />}
+          </Fragment>
         ))}
         {!loading && list.length === 0 && (
           <div className="rounded-[22px] border border-dashed border-line bg-white px-6 py-12 text-center">
