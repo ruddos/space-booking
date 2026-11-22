@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api.js'
 import { formatPrice, isoDate } from '../../utils/format.js'
 import { CalendarIcon } from '../Icons.jsx'
+import RangeTimePicker from '../booking/RangeTimePicker.jsx'
 
 // боковая карточка на странице студии: дата, свободные часы, кнопка брони
 export default function BookingWidget({ room }) {
@@ -12,12 +13,14 @@ export default function BookingWidget({ room }) {
   const [date, setDate] = useState(initial && /^\d{4}-\d{2}-\d{2}$/.test(initial) && initial >= isoDate() ? initial : isoDate())
   const [data, setData] = useState(null)
   const [time, setTime] = useState('')
+  const [duration, setDuration] = useState(1)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let ignore = false
     setLoading(true)
     setTime('')
+    setDuration(1)
     api(`/rooms/${room.id}/available-slots`, { params: { date } })
       .then((d) => !ignore && setData(d))
       .catch(() => !ignore && setData(null))
@@ -32,7 +35,7 @@ export default function BookingWidget({ room }) {
 
   function book() {
     const q = new URLSearchParams({ date })
-    if (time) q.set('time', time)
+    if (time) { q.set('time', time); q.set('duration', String(duration)) }
     navigate(`/booking/${room.id}?${q}`)
   }
 
@@ -61,36 +64,13 @@ export default function BookingWidget({ room }) {
       <div className="mt-5 text-[13px] font-bold text-muted">
         Свободное время {!loading && slots.length > 0 && <span className="font-semibold">· {free.length} ч</span>}
       </div>
-      <div className="mt-2.5 grid min-h-[40px] grid-cols-4 gap-2">
-        {loading ? (
-          <span className="col-span-4 py-2 text-[14px] text-muted">Загружаем…</span>
-        ) : slots.length === 0 ? (
-          <span className="col-span-4 py-2 text-[14px] text-muted">В этот день студия не работает</span>
-        ) : (
-          slots.map((s) => (
-            <button
-              key={s.time}
-              type="button"
-              disabled={!s.is_available}
-              onClick={() => setTime(s.time === time ? '' : s.time)}
-              className={`h-10 rounded-[10px] text-[14px] transition-colors ${
-                !s.is_available
-                  ? 'cursor-not-allowed bg-[#f2f2f6] font-semibold text-[#8a8a9c]'
-                  : s.time === time
-                    ? 'bg-accent font-bold text-white'
-                    : 'border border-line font-bold hover:border-accent'
-              }`}
-            >
-              {s.time}
-            </button>
-          ))
-        )}
-      </div>
+      <RangeTimePicker key={`${room.id}-${date}`} compact slots={slots} loading={loading} start={time} duration={duration}
+        onChange={(next, hours) => { setTime(next); setDuration(hours) }} />
 
       <button
         type="button"
         onClick={book}
-        disabled={!loading && free.length === 0}
+        disabled={loading || free.length === 0 || !time || duration < 1}
         className="mt-5 h-[54px] w-full rounded-[14px] bg-accent text-[16px] font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         Забронировать

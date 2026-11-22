@@ -37,7 +37,10 @@ export default function Booking() {
   const [slots, setSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(true)
   const [start, setStart] = useState(params.get('time') || '')
-  const [duration, setDuration] = useState(2)
+  const [duration, setDuration] = useState(() => {
+    const hours = Number(params.get('duration'))
+    return Number.isInteger(hours) && hours >= 1 && hours <= 24 ? hours : 2
+  })
   const [serviceIds, setServiceIds] = useState([])
   const [promo, setPromo] = useState('')
   const [method, setMethod] = useState('card')
@@ -81,12 +84,12 @@ export default function Booking() {
     if (start && maxRun > 0 && duration > maxRun) setDuration(maxRun)
   }, [start, maxRun, duration])
 
-  const end = start ? plusHours(start, duration) : ''
+  const end = start && duration > 0 ? plusHours(start, duration) : ''
 
   // итоговую цену (выходные, скидка за длительность, услуги, промокод) считает бэкенд
   useEffect(() => {
     setPrice(null)
-    if (!start) {
+    if (!start || duration < 1) {
       return
     }
     let ignore = false
@@ -108,7 +111,7 @@ export default function Booking() {
       ignore = true
       clearTimeout(t)
     }
-  }, [roomId, date, start, end, serviceIds, promo])
+  }, [roomId, date, start, end, duration, serviceIds, promo])
 
   async function submit() {
     if (sending) return
@@ -199,6 +202,8 @@ export default function Booking() {
             <Section>
               <DayPicker value={date} onChange={setDate} />
               <SlotPicker
+                key={`${roomId}-${date}-${reload}`}
+                onRange={(time, hours) => { setStart(time); setDuration(hours) }}
                 slots={slots}
                 loading={slotsLoading}
                 start={start}

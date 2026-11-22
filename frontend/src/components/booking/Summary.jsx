@@ -68,7 +68,7 @@ export default function Summary({
 
       <div className="mt-4 rounded-[14px] bg-bg px-4 py-3.5">
         <div className="text-[15px] font-extrabold first-letter:uppercase">{formatLongDate(date)}</div>
-        <div className="mt-1 text-[15px] text-muted">{start ? `${start} – ${end}` : 'Выбери время начала'}</div>
+        <div className="mt-1 text-[15px] text-muted">{start && end ? `${start} – ${end}` : start ? `С ${start} — выбери окончание` : 'Выбери время начала'}</div>
       </div>
 
       {price && (

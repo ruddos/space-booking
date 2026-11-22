@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { addDays, isoDate } from '../../utils/format.js'
+import RangeTimePicker from './RangeTimePicker.jsx'
 
 const DAYS_AHEAD = 14
 export const DURATIONS = [1, 2, 3, 4, 6]
@@ -59,14 +61,15 @@ export function DayPicker({ value, onChange }) {
   )
 }
 
-export function SlotPicker({ slots, loading, start, duration, onStart, onDuration }) {
+export function SlotPicker({ slots, loading, start, duration, onStart, onDuration, onRange }) {
+  const [selection, setSelection] = useState(0)
   const startIndex = slots.findIndex((s) => s.time === start)
   const maxRun = startIndex >= 0 ? freeRun(slots, startIndex) : 0
 
   return (
     <div>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[20px] font-extrabold">Время начала</h2>
+        <h2 className="text-[20px] font-extrabold">Время аренды</h2>
         <div className="flex gap-4 text-[13px] text-muted">
           <span className="flex items-center gap-1.5">
             <i className="size-3.5 rounded border border-[#c9c9d6]" /> свободно
@@ -80,40 +83,12 @@ export function SlotPicker({ slots, loading, start, duration, onStart, onDuratio
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
-        {loading && <span className="col-span-full py-3 text-muted">Загружаем расписание…</span>}
-        {!loading && slots.length === 0 && (
-          <span className="col-span-full py-3 text-muted">В этот день площадка не работает — выбери другую дату</span>
-        )}
-        {!loading &&
-          slots.map((s, i) => {
-            const selected = i === startIndex
-            const inRange = startIndex >= 0 && i > startIndex && i < startIndex + duration
-            return (
-              <button
-                key={s.time}
-                type="button"
-                disabled={!s.is_available}
-                onClick={() => onStart(s.time)}
-                className={`h-[46px] ${btnBase} ${
-                  !s.is_available
-                    ? 'cursor-not-allowed border-[#e6e6ec] bg-[#e6e6ec] text-[#8a8a9c]'
-                    : selected
-                      ? 'border-accent bg-accent text-white'
-                      : inRange
-                        ? 'border-accent-pale bg-accent-light text-accent-hover'
-                        : 'border-line bg-white hover:border-accent'
-                }`}
-              >
-                {s.time}
-              </button>
-            )
-          })}
-      </div>
+      <RangeTimePicker key={selection} slots={slots} loading={loading} start={start} duration={duration}
+        onChange={(time, hours) => { if (onRange) onRange(time, hours); else { onStart(time); onDuration(hours) } }} />
 
       <h2 className="mt-8 text-[20px] font-extrabold">Длительность</h2>
       <div className="mt-4 flex flex-wrap gap-2">
-        {DURATIONS.map((h) => {
+        {[...new Set([...DURATIONS, duration])].filter((h) => h > 0).sort((a, b) => a - b).map((h) => {
           const on = h === duration
           const disabled = startIndex >= 0 && h > maxRun
           return (
@@ -121,7 +96,7 @@ export function SlotPicker({ slots, loading, start, duration, onStart, onDuratio
               key={h}
               type="button"
               disabled={disabled}
-              onClick={() => onDuration(h)}
+              onClick={() => { onDuration(h); setSelection((n) => n + 1) }}
               title={disabled ? 'Дальше время занято или площадка закрывается' : undefined}
               className={`h-[46px] px-4 ${btnBase} ${
                 on
