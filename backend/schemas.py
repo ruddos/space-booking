@@ -1,6 +1,6 @@
 from datetime import datetime, time
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from models import UserRole, BookingStatus
 
 # --- Amenity Schemas ---
@@ -26,13 +26,30 @@ class ScheduleResponse(ScheduleBase):
     model_config = ConfigDict(from_attributes=True)
 
 # --- Review Schemas ---
+class ReviewCreate(BaseModel):
+    booking_id: int
+    rating: int = Field(..., ge=1, le=5, description="Оценка от 1 до 5")
+    text: str = Field(..., min_length=10, max_length=2000, description="Текст отзыва от 10 до 2000 символов")
+
 class ReviewResponse(BaseModel):
     id: int
     room_id: int
+    user_id: Optional[int] = None
+    booking_id: Optional[int] = None
     author_name: str
     rating: int
     text: str
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class LatestReviewResponse(BaseModel):
+    id: int
+    author_name: str
+    rating: int
+    text: str
+    created_at: datetime
+    room_id: int
+    room_name: str
     model_config = ConfigDict(from_attributes=True)
 
 # --- Slot Schemas ---
@@ -55,10 +72,10 @@ class RoomBase(BaseModel):
     price_per_hour: int
     capacity: int
     area: Optional[int] = 80
-    metro: Optional[str] = "м. Белорусская"
-    address: Optional[str] = "Москва, ул. Лесная, 7"
-    rating: Optional[float] = 4.9
-    reviews_count: Optional[int] = 128
+    metro: Optional[str] = "Ленинский р-н"
+    address: Optional[str] = "Ростов-на-Дону, ул. Большая Садовая, 47"
+    rating: Optional[float] = 0.0
+    reviews_count: Optional[int] = 0
     image_url: Optional[str] = None
 
 class RoomCreate(RoomBase):
@@ -105,6 +122,7 @@ class BookingResponse(BaseModel):
     contact_phone: Optional[str] = None
     created_at: datetime
     room: Optional[RoomResponse] = None
+    has_review: bool = False
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -224,6 +242,7 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    remember: bool = False
 
 class UserResponse(BaseModel):
     id: int

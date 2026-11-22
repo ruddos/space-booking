@@ -7,7 +7,7 @@ from typing import Optional, List
 from fastapi import FastAPI, Depends, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text, and_, or_
+from sqlalchemy import select, text, and_, or_, func
 from sqlalchemy.orm import selectinload
 
 from database import init_db, get_db, engine
@@ -25,7 +25,8 @@ from schemas import (
     BlogPostResponse, ContactMessageCreate, NewsletterSubscribe,
     ServiceResponse, PromoValidateRequest, PromoValidateResponse,
     PriceCalculationRequest, PriceCalculationResponse,
-    PaymentResponse, BookingStatusLogResponse, NotificationResponse
+    PaymentResponse, BookingStatusLogResponse, NotificationResponse,
+    ReviewCreate, ReviewResponse, LatestReviewResponse
 )
 from services.pricing_service import calculate_pricing_breakdown
 from services.booking_service import (
@@ -34,7 +35,8 @@ from services.booking_service import (
 )
 from auth import (
     hash_password, verify_password,
-    create_access_token, get_current_user, get_current_admin
+    create_access_token, get_current_user, get_current_admin,
+    ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
 # Стоимость дополнительных услуг из макета Figma (Экран 04 Бронирование)
@@ -167,8 +169,10 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    expires_delta = timedelta(days=30) if login_data.remember else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "role": user.role.value}
+        data={"sub": str(user.id), "email": user.email, "role": user.role.value},
+        expires_delta=expires_delta
     )
     return TokenResponse(access_token=token, token_type="bearer", user=user)
 
@@ -190,6 +194,7 @@ async def get_rooms(
     max_price: Optional[int] = Query(None, description="Максимальная цена за час"),
     capacity: Optional[int] = Query(None, description="Вместимость от N человек"),
     only_available_today: bool = Query(False, description="Только залы со свободными слотами сегодня"),
+    slot_date: Optional[date] = Query(None, alias="date", description="Дата для расчета доступных слотов"),
     db: AsyncSession = Depends(get_db)
 ):
     query = (
@@ -223,14 +228,14 @@ async def get_rooms(
     result = await db.execute(query)
     rooms = result.scalars().all()
 
-    today = date.today()
-    today_dow = today.weekday()
-    day_start = datetime.combine(today, time.min)
-    day_end = datetime.combine(today, time.max)
+    target_date = slot_date or date.today()
+    target_dow = target_date.weekday()
+    day_start = datetime.combine(target_date, time.min)
+    day_end = datetime.combine(target_date, time.max)
 
     response_rooms = []
     for room in rooms:
-        sched = next((s for s in room.schedules if s.day_of_week == today_dow), None)
+        sched = next((s for s in room.schedules if s.day_of_week == target_dow), None)
         today_free_slots = []
 
         if sched:
@@ -243,7 +248,7 @@ async def get_rooms(
             b_res = await db.execute(b_query)
             bookings_today = b_res.scalars().all()
 
-            calculated = calculate_slots(sched, bookings_today, today)
+            calculated = calculate_slots(sched, bookings_today, target_date)
             today_free_slots = [s.time for s in calculated if s.is_available][:4]
 
         if only_available_today and not today_free_slots:
@@ -338,6 +343,142 @@ async def get_available_slots(
         close_time=sched.close_time.strftime("%H:%M"),
         slots=slots
     )
+
+# --- 3.1. Отзывы и рейтинги (Reviews) ---
+
+async def recalc_room_rating(db: AsyncSession, room_id: int):
+    """
+    Пересчет рейтинга зала на основе отзывов:
+    rating = round(avg(reviews.rating), 1), reviews_count = count(reviews).
+    Если отзывов нет: rating = 0.0, reviews_count = 0.
+    """
+    query = select(
+        func.count(Review.id),
+        func.avg(Review.rating)
+    ).where(Review.room_id == room_id)
+    res = await db.execute(query)
+    count, avg_rating = res.one()
+
+    room_res = await db.execute(select(Room).where(Room.id == room_id))
+    room = room_res.scalar_one_or_none()
+    if room:
+        room.reviews_count = count or 0
+        room.rating = round(float(avg_rating), 1) if avg_rating is not None else 0.0
+        await db.commit()
+
+@app.post(
+    "/api/rooms/{room_id}/reviews",
+    response_model=ReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Reviews"]
+)
+async def create_room_review(
+    room_id: int,
+    review_data: ReviewCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Оставить отзыв о зале по завершенной брони"""
+    room_res = await db.execute(select(Room).where(Room.id == room_id, Room.is_active == True))
+    room = room_res.scalar_one_or_none()
+    if not room:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Зал не найден")
+
+    booking_res = await db.execute(select(Booking).where(Booking.id == review_data.booking_id))
+    booking = booking_res.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Бронирование не найдено")
+
+    if booking.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нельзя оставить отзыв на чужую бронь")
+
+    if booking.room_id != room_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Бронь относится к другому залу")
+
+    if booking.status == BookingStatus.CANCELLED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Нельзя оставить отзыв на отмененную бронь")
+
+    if booking.end_time > datetime.now():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Отзыв можно оставить после посещения")
+
+    existing_review_res = await db.execute(select(Review).where(Review.booking_id == booking.id))
+    if existing_review_res.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="На эту бронь уже оставлен отзыв")
+
+    parts = current_user.full_name.strip().split()
+    if len(parts) >= 2:
+        author_name = f"{parts[0]} {parts[1][0]}."
+    elif len(parts) == 1:
+        author_name = parts[0]
+    else:
+        author_name = "Гость"
+
+    new_review = Review(
+        room_id=room_id,
+        user_id=current_user.id,
+        booking_id=booking.id,
+        author_name=author_name,
+        rating=review_data.rating,
+        text=review_data.text,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_review)
+    await db.commit()
+    await db.refresh(new_review)
+
+    await recalc_room_rating(db, room_id)
+
+    return new_review
+
+@app.get(
+    "/api/reviews/latest",
+    response_model=List[LatestReviewResponse],
+    tags=["Reviews"]
+)
+async def get_latest_reviews(
+    limit: int = Query(3, ge=1, le=20, description="Количество последних отзывов"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Последние отзывы для главной страницы"""
+    query = (
+        select(Review)
+        .options(selectinload(Review.room))
+        .order_by(Review.created_at.desc())
+        .limit(limit)
+    )
+    res = await db.execute(query)
+    reviews = res.scalars().all()
+
+    result = []
+    for r in reviews:
+        result.append(LatestReviewResponse(
+            id=r.id,
+            author_name=r.author_name,
+            rating=r.rating,
+            text=r.text,
+            created_at=r.created_at,
+            room_id=r.room_id,
+            room_name=r.room.name if r.room else ""
+        ))
+    return result
+
+@app.get(
+    "/api/rooms/{room_id}/reviews",
+    response_model=List[ReviewResponse],
+    tags=["Reviews"]
+)
+async def get_room_reviews(
+    room_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Список отзывов по залу"""
+    query = (
+        select(Review)
+        .where(Review.room_id == room_id)
+        .order_by(Review.created_at.desc())
+    )
+    res = await db.execute(query)
+    return res.scalars().all()
 
 # --- Услуги, Промокоды и Калькулятор цен (Enterprise) ---
 
@@ -582,7 +723,10 @@ async def create_booking(
 
     query = (
         select(Booking)
-        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .options(
+            selectinload(Booking.room).selectinload(Room.amenities),
+            selectinload(Booking.review)
+        )
         .where(Booking.id == new_booking.id)
     )
     res = await db.execute(query)
@@ -596,7 +740,10 @@ async def get_my_bookings(
 ):
     query = (
         select(Booking)
-        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .options(
+            selectinload(Booking.room).selectinload(Room.amenities),
+            selectinload(Booking.review)
+        )
         .where(Booking.user_id == current_user.id)
     )
 
@@ -620,7 +767,10 @@ async def cancel_booking(
 ):
     query = (
         select(Booking)
-        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .options(
+            selectinload(Booking.room).selectinload(Room.amenities),
+            selectinload(Booking.review)
+        )
         .where(Booking.id == booking_id)
     )
     res = await db.execute(query)
@@ -784,25 +934,39 @@ async def get_booking_receipt(
             "name": f"Аренда зала «{booking.room.name}» ({duration_hours} ч.)",
             "quantity": duration_hours,
             "unit_price": booking.room.price_per_hour,
-            "total_price": booking.room.price_per_hour * duration_hours
+            "total_price": booking.room.price_per_hour * duration_hours,
+            "price": booking.room.price_per_hour * duration_hours
         }
     ]
+
+    is_weekend = booking.start_time.weekday() in (5, 6)
+    if is_weekend:
+        effective_rate = int(booking.room.price_per_hour * 1.15)
+        weekend_surcharge = (effective_rate - booking.room.price_per_hour) * duration_hours
+        items.append({
+            "name": "Надбавка за выходной день (+15%)",
+            "quantity": 1,
+            "unit_price": weekend_surcharge,
+            "total_price": weekend_surcharge,
+            "price": weekend_surcharge
+        })
 
     for bs in booking.services:
         items.append({
             "name": bs.service.name,
             "quantity": bs.quantity,
             "unit_price": bs.price_at_booking,
-            "total_price": bs.price_at_booking * bs.quantity
+            "total_price": bs.price_at_booking * bs.quantity,
+            "price": bs.price_at_booking * bs.quantity
         })
 
     return {
         "receipt_number": f"RCP-{booking.booking_number}",
-        "issued_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "issued_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "booking_number": booking.booking_number,
         "studio_name": booking.room.studio.name if booking.room.studio else "SPACE Studios",
         "hall_name": booking.room.name,
-        "address": booking.room.address or "Москва",
+        "address": booking.room.address or "Ростов-на-Дону, ул. Большая Садовая, 47",
         "date": booking.start_time.strftime("%d.%m.%Y"),
         "time_interval": f"{booking.start_time.strftime('%H:%M')} – {booking.end_time.strftime('%H:%M')}",
         "customer": {
@@ -968,7 +1132,10 @@ async def get_all_bookings(
 ):
     query = (
         select(Booking)
-        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .options(
+            selectinload(Booking.room).selectinload(Room.amenities),
+            selectinload(Booking.review)
+        )
         .order_by(Booking.created_at.desc())
     )
     res = await db.execute(query)
@@ -983,7 +1150,10 @@ async def update_booking_status(
 ):
     query = (
         select(Booking)
-        .options(selectinload(Booking.room).selectinload(Room.amenities))
+        .options(
+            selectinload(Booking.room).selectinload(Room.amenities),
+            selectinload(Booking.review)
+        )
         .where(Booking.id == booking_id)
     )
     res = await db.execute(query)

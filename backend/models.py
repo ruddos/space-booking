@@ -50,6 +50,7 @@ class User(Base):
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")
     favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="user")
 
 # 1. Фотостудия / Пространство (1 студия -> N залов)
 class Studio(Base):
@@ -57,9 +58,9 @@ class Studio(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
-    city: Mapped[str] = mapped_column(String(50), default="Москва", nullable=False)
-    address: Mapped[str] = mapped_column(String(255), nullable=False)
-    metro: Mapped[str] = mapped_column(String(100), nullable=True)
+    city: Mapped[str] = mapped_column(String(50), default="Ростов-на-Дону", nullable=False)
+    address: Mapped[str] = mapped_column(String(255), default="Ростов-на-Дону, ул. Большая Садовая, 47", nullable=False)
+    metro: Mapped[str] = mapped_column(String(100), default="Ленинский р-н", nullable=True)
     phone: Mapped[str] = mapped_column(String(30), nullable=True)
     email: Mapped[str] = mapped_column(String(100), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -79,10 +80,10 @@ class Room(Base):
     price_per_hour: Mapped[int] = mapped_column(Integer, nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     area: Mapped[int] = mapped_column(Integer, nullable=True, default=80)
-    metro: Mapped[str] = mapped_column(String(100), nullable=True, default="м. Белорусская")
-    address: Mapped[str] = mapped_column(String(200), nullable=True)
-    rating: Mapped[float] = mapped_column(Float, nullable=True, default=4.9)
-    reviews_count: Mapped[int] = mapped_column(Integer, nullable=True, default=128)
+    metro: Mapped[str] = mapped_column(String(100), nullable=True, default="Ленинский р-н")
+    address: Mapped[str] = mapped_column(String(200), nullable=True, default="Ростов-на-Дону, ул. Большая Садовая, 47")
+    rating: Mapped[float] = mapped_column(Float, nullable=True, default=0.0)
+    reviews_count: Mapped[int] = mapped_column(Integer, nullable=True, default=0)
     image_url: Mapped[str] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -167,6 +168,14 @@ class Booking(Base):
     services: Mapped[list["BookingService"]] = relationship("BookingService", back_populates="booking", cascade="all, delete-orphan")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="booking", cascade="all, delete-orphan")
     status_logs: Mapped[list["BookingStatusLog"]] = relationship("BookingStatusLog", back_populates="booking", cascade="all, delete-orphan")
+    review: Mapped["Review | None"] = relationship("Review", back_populates="booking", uselist=False, cascade="all, delete-orphan")
+
+    @property
+    def has_review(self) -> bool:
+        try:
+            return self.review is not None
+        except Exception:
+            return False
 
 # 4. Связующая таблица брони и платных услуг (3НФ)
 class BookingService(Base):
@@ -230,12 +239,16 @@ class Review(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     room_id: Mapped[int] = mapped_column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    booking_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), unique=True, nullable=True)
     author_name: Mapped[str] = mapped_column(String(100), nullable=False)
     rating: Mapped[int] = mapped_column(Integer, default=5)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     room: Mapped["Room"] = relationship("Room", back_populates="reviews")
+    user: Mapped["User | None"] = relationship("User", back_populates="reviews")
+    booking: Mapped["Booking | None"] = relationship("Booking", back_populates="review")
 
 class Favorite(Base):
     __tablename__ = "favorites"
