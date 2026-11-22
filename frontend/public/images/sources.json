@@ -1,0 +1,21 @@
+{
+  "license": "https://www.pexels.com/license/",
+  "note": "Стоковые иллюстрации учебного проекта, не фотографии объектов по указанным адресам.",
+  "photos": {
+    "rooms/moody.jpg": "https://www.pexels.com/photo/134469/",
+    "rooms/loft-north.jpg": "https://www.pexels.com/photo/16008692/",
+    "rooms/white-box.jpg": "https://www.pexels.com/photo/1932666/",
+    "rooms/noir.jpg": "https://www.pexels.com/photo/30332804/",
+    "rooms/violet-hall.jpg": "https://www.pexels.com/photo/8761311/",
+    "rooms/grain.jpg": "https://www.pexels.com/photo/26966416/",
+    "blog/2.jpg": "https://www.pexels.com/photo/7383646/",
+    "blog/5.jpg": "https://www.pexels.com/photo/12616007/",
+    "blog/6.jpg": "https://www.pexels.com/photo/17094508/"
+  },
+  "reused": {
+    "blog/1.jpg": "rooms/moody.jpg",
+    "blog/3.jpg": "rooms/violet-hall.jpg",
+    "blog/4.jpg": "rooms/grain.jpg",
+    "blog/7.jpg": "rooms/loft-north.jpg"
+  }
+}
