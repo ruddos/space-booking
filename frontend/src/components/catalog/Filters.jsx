@@ -123,16 +123,16 @@ export default function Filters({ value, onChange, onReset, found, onShow }) {
         ))}
       </div>
 
-      <h3 className="mt-5 text-[15px] font-bold">Метро или район</h3>
+      <h3 className="mt-5 text-[15px] font-bold">Район или адрес</h3>
       <input
         value={value.metro}
         onChange={(e) => set({ metro: e.target.value })}
-        placeholder="Например, Курская"
+        placeholder="Например, Ленинский"
         className="mt-3 h-[46px] w-full rounded-[10px] border border-line px-3 text-[15px] outline-none placeholder:text-[#75758a] focus:border-accent"
       />
 
       <label className="mt-6 flex cursor-pointer items-center justify-between gap-3 rounded-[14px] bg-bg px-4 py-3.5">
-        <span className="text-[15px] font-semibold">Только свободные сегодня</span>
+        <span className="text-[15px] font-semibold">Только со свободным временем</span>
         <input
           type="checkbox"
           checked={value.freeToday}

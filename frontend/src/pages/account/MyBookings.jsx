@@ -39,7 +39,7 @@ function BookingItem({ b, busy, onCancel, onPay, onReview }) {
         </div>
         <p className="mt-2 text-[16px] font-bold">{formatSlot(b.start_time, b.end_time)}</p>
         <p className="mt-1 text-[14px] text-muted">
-          {room.address.replace('Москва, ', '')} · {formatPrice(b.total_price)} · № {b.booking_number}
+          {room.address.replace('Ростов-на-Дону, ', '')} · {formatPrice(b.total_price)} · № {b.booking_number}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -215,7 +215,7 @@ export default function MyBookings() {
                 <div className="p-4">
                   <div className="text-[16px] font-extrabold">{r.name}</div>
                   <div className="mt-1 text-[14px] text-muted">
-                    {formatPrice(r.price_per_hour)}/час · ★ {r.rating}
+                    {formatPrice(r.price_per_hour)}/час · {r.reviews_count ? `★ ${r.rating}` : 'Нет оценок'}
                   </div>
                 </div>
               </Link>

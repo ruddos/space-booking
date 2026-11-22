@@ -90,9 +90,9 @@ export function sortRooms(list, key) {
   )
 }
 
-// поиск привязан к центру Москвы, иначе «ул. Лесная, 7» находится в Подмосковье
-const MOSCOW = 'll=37.6176%2C55.7558&sspn=0.35%2C0.2&rl=1'
-const withCity = (address) => (address.includes('Москва') ? address : `Москва, ${address}`)
+// Координаты центра Ростова-на-Дону: долгота, широта.
+const ROSTOV = 'll=39.7187%2C47.2221&sspn=0.2%2C0.12&rl=1'
+const withCity = (address = '') => (address.includes('Ростов-на-Дону') ? address : `Ростов-на-Дону, ${address}`)
 
-export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?${MOSCOW}&text=${encodeURIComponent(withCity(address))}`
+export const mapUrl = (address) => `https://yandex.ru/map-widget/v1/?${ROSTOV}&text=${encodeURIComponent(withCity(address))}`
 export const routeUrl = (address) => `https://yandex.ru/maps/?rtext=~${encodeURIComponent(withCity(address))}`

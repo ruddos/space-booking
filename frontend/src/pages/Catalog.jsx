@@ -128,7 +128,7 @@ export default function Catalog() {
       : []),
     ...(filters.metro ? [{ label: filters.metro, remove: () => setFilters({ ...filters, metro: '' }) }] : []),
     ...(filters.freeToday
-      ? [{ label: 'Свободно сегодня', remove: () => setFilters({ ...filters, freeToday: false }) }]
+      ? [{ label: 'Есть свободное время', remove: () => setFilters({ ...filters, freeToday: false }) }]
       : []),
   ]
 
@@ -137,11 +137,11 @@ export default function Catalog() {
   return (
     <PageLayout>
       <div className="container-x pt-8 pb-24">
-        <Breadcrumbs items={[['Главная', '/'], ['Площадки в Москве']]} />
+        <Breadcrumbs items={[['Главная', '/'], ['Площадки в Ростове-на-Дону']]} />
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="h2">Площадки в Москве</h1>
+            <h1 className="h2">Площадки в Ростове-на-Дону</h1>
             <p className="mt-1.5 text-[16px] text-muted">
               Найдено {result.length} {plural(result.length, ['площадка', 'площадки', 'площадок'])} · {today}
             </p>

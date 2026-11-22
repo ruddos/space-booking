@@ -131,7 +131,7 @@ export default function About() {
             </p>
           </div>
           <img
-            src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1200&q=80"
+            src="/images/rooms/violet-hall.jpg"
             alt="Зал для мероприятий"
             className="h-[300px] w-full rounded-[28px] object-cover sm:h-[420px]"
           />
@@ -169,12 +169,12 @@ export default function About() {
         <section id="contacts" className="grid scroll-mt-6 gap-6 pt-20 lg:grid-cols-[578px_1fr]">
           <div className="rounded-[28px] bg-dark p-8 text-white sm:p-10">
             <h2 className="text-[40px] font-extrabold tracking-[-0.02em]">Контакты</h2>
-            <p className="mt-4 text-[16px] text-on-dark">Поддержка работает каждый день с 08:00 до 23:00 по Москве.</p>
+            <p className="mt-4 text-[16px] text-on-dark">Поддержка работает каждый день с 08:00 до 23:00 по времени Ростова-на-Дону.</p>
             <dl className="mt-6 space-y-5">
               {[
-                ['Телефон', '+7 (495) 120-45-77', 'tel:+74951204577'],
+                ['Телефон', '+7 (863) 310-45-77', 'tel:+78633104577'],
                 ['Почта', 'hello@space.ru', 'mailto:hello@space.ru'],
-                ['Офис', 'Москва, ул. Нижняя Сыромятническая, 10, стр. 2'],
+                ['Офис', 'Ростов-на-Дону, ул. Большая Садовая, 47'],
               ].map(([label, value, href]) => (
                 <div key={label}>
                   <dt className="text-[13px] font-bold text-on-dark-muted">{label}</dt>

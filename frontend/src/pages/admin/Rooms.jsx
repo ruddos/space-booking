@@ -51,7 +51,7 @@ export default function Rooms() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Название, метро, адрес"
+            placeholder="Название, район, адрес"
             className="h-11 w-full rounded-xl border border-line bg-white pr-4 pl-10 text-[15px] outline-none focus:border-accent"
           />
         </label>
@@ -73,7 +73,7 @@ export default function Rooms() {
                 </span>
                 <span className="flex items-center gap-1 text-[14px] font-bold">
                   <StarIcon size={14} className="text-star" />
-                  {room.rating} <span className="font-medium text-muted">({room.reviews_count})</span>
+                  {room.reviews_count ? room.rating : 'Нет оценок'} <span className="font-medium text-muted">({room.reviews_count})</span>
                 </span>
               </div>
               <p className="mt-1 text-[14px] text-muted">
