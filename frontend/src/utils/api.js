@@ -2,7 +2,10 @@ const TOKEN_KEY = 'space_token'
 
 // без «Запомнить меня» токен живет только до закрытия вкладки
 export const getToken = () => localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
-export const setToken = (token, remember = true) => (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
+export const setToken = (token, remember = true) => {
+  clearToken()
+  ;(remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
+}
 export const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(TOKEN_KEY)
@@ -39,6 +42,10 @@ export async function api(path, { method = 'GET', body, params } = {}) {
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
+    if (res.status === 401 && token && getToken() === token && !path.startsWith('/auth/login')) {
+      clearToken()
+      window.dispatchEvent(new Event('space:session-expired'))
+    }
     let msg = 'Ошибка сервера'
     if (typeof data?.detail === 'string') msg = data.detail
     else if (Array.isArray(data?.detail)) msg = data.detail.map((d) => d.msg).join(', ')

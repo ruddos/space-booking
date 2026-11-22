@@ -8,15 +8,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(() => Boolean(getToken()))
 
   useEffect(() => {
-    if (!getToken()) return
-    api('/auth/me')
-      .then(setUser)
-      .catch(() => clearToken())
-      .finally(() => setLoading(false))
+    let active = true
+    const expire = () => { setUser(null); setLoading(false) }
+    const sync = () => {
+      if (!getToken()) return expire()
+      setLoading(true)
+      api('/auth/me')
+        .then((u) => active && setUser(u))
+        .catch((e) => { if (active && e.status === 401) expire() })
+        .finally(() => active && setLoading(false))
+    }
+    window.addEventListener('space:session-expired', expire)
+    window.addEventListener('storage', sync)
+    sync()
+    return () => {
+      active = false
+      window.removeEventListener('space:session-expired', expire)
+      window.removeEventListener('storage', sync)
+    }
   }, [])
 
   async function login(email, password, remember = true) {
-    const data = await api('/auth/login', { method: 'POST', body: { email, password } })
+    const data = await api('/auth/login', { method: 'POST', body: { email: email.trim().toLowerCase(), password, remember } })
     setToken(data.access_token, remember)
     setUser(data.user)
     return data.user

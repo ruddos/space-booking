@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckIcon, Logo } from '../components/Icons.jsx'
 import { useAuth } from '../utils/auth.jsx'
+import { loginTarget } from '../utils/loginTarget.js'
 
 const inputCls =
   'h-[52px] w-full rounded-xl border border-[#dcdce6] bg-white px-4 text-[15px] font-bold outline-none transition-colors placeholder:font-medium placeholder:text-[#75758a] focus:border-accent'
@@ -16,7 +17,7 @@ function Field({ label, ...props }) {
 }
 
 export default function Login() {
-  const { user, login, register } = useAuth()
+  const { user, loading, login, register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
@@ -29,7 +30,8 @@ export default function Login() {
   const [sending, setSending] = useState(false)
 
   // уже вошли — нечего тут делать
-  if (user) return <Navigate to={location.state?.from || (user.role === 'admin' ? '/admin' : '/')} replace />
+  if (loading) return <p role="status" className="p-12 text-center">Проверяем вход…</p>
+  if (user) return <Navigate to={loginTarget(user, location.state?.from)} replace />
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
@@ -41,7 +43,7 @@ export default function Login() {
       const u = isRegister
         ? await register({ ...form, phone: form.phone || null })
         : await login(form.email, form.password, remember)
-      navigate(location.state?.from || (u.role === 'admin' ? '/admin' : '/'), { replace: true })
+      navigate(loginTarget(u, location.state?.from), { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -59,7 +61,7 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[700px_1fr]">
       <div className="relative hidden overflow-hidden bg-dark lg:block">
         <img
-          src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80"
+          src="/images/rooms/moody.jpg"
           alt=""
           className="absolute inset-0 size-full object-cover"
         />
@@ -164,23 +166,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="my-8 flex items-center gap-3 text-[14px] text-muted">
-            <span className="h-px flex-1 bg-[#dcdce6]" />
-            или
-            <span className="h-px flex-1 bg-[#dcdce6]" />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {['VK ID', 'Яндекс ID'].map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setNote(`Вход через ${name} скоро появится`)}
-                className="h-[50px] rounded-xl border border-[#dcdce6] bg-white text-[15px] font-bold hover:bg-bg"
-              >
-                {name}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>
